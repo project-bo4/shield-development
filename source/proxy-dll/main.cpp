@@ -6,8 +6,6 @@
 #include <utils/hook.hpp>
 #include <utils/string.hpp>
 #include <utils/finally.hpp>
-#include "component/logger.hpp"
-
 
 namespace
 {

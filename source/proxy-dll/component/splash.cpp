@@ -222,6 +222,4 @@ namespace splash
 	}
 }
 
-#ifndef AVOID_UNNECESSARY_CHANGES
 REGISTER_COMPONENT(splash::component)
-#endif // AVOID_UNNECESSARY_CHANGES

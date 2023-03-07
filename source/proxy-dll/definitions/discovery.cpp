@@ -3,7 +3,6 @@
 #include "loader/component_loader.hpp"
 #include <utils/hook.hpp>
 #include <utils/signature.hpp>
-#include <component/logger.hpp>
 
 std::unordered_map<std::string, size_t> symbols_list;
 

@@ -93,13 +93,15 @@
 #pragma comment(lib, "iphlpapi.lib")
 #pragma comment(lib, "Crypt32.lib")
 
+#include <component/logger.hpp>
+
 using namespace std::literals;
 
 size_t get_base();
+
 size_t operator"" _b(size_t val);
 size_t reverse_b(size_t val);
 size_t reverse_b(const void* val);
-
 
 size_t operator"" _g(size_t val);
 size_t reverse_g(size_t val);

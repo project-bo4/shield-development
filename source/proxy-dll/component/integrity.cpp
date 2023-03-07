@@ -9,11 +9,6 @@ namespace integrity
 {
 	namespace
 	{	
-#ifndef AVOID_UNNECESSARY_CHANGES
-
-		/* PLACE_HOLDER */
-
-#endif // AVOID_UNNECESSARY_CHANGES
 		const std::vector<std::pair<uint8_t*, size_t>>& get_text_sections()
 		{
 			static const std::vector<std::pair<uint8_t*, size_t>> text = []
@@ -315,14 +310,12 @@ namespace integrity
 	public:
 		void pre_start() override
 		{
-#ifndef AVOID_UNNECESSARY_CHANGES
 			disable_tls_callbacks();
 
 			create_thread_hook.create(CreateThread, create_thread_stub);
 			auto* get_thread_context_func = utils::nt::library("kernelbase.dll").get_proc<void*>("GetThreadContext");
 			get_thread_context_hook.create(get_thread_context_func, get_thread_context_stub);
 
-#endif // AVOID_UNNECESSARY_CHANGES
 
 			/*************************************************************************************************************
 			** TODO : There is some kind of dormant defence mechanism. works so random makes it harder to investigate

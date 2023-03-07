@@ -1,8 +1,7 @@
 #include <std_include.hpp>
 #include "loader/component_loader.hpp"
 #include <utils/hook.hpp>
-#include <component/logger.hpp>
-#include "definitions\discovery.hpp"
+
 
 namespace demonware
 {

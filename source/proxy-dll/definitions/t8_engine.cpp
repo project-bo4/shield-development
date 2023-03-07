@@ -1,8 +1,6 @@
 #include <std_include.hpp>
 #include "definitions\t8_engine.hpp"
 #include "loader/component_loader.hpp"
-#include <component/logger.hpp>
-#include <utils/string.hpp>
 
 namespace game
 {

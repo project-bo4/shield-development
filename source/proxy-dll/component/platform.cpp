@@ -1,10 +1,7 @@
 #include <std_include.hpp>
 #include "loader/component_loader.hpp"
 #include "utils/hook.hpp"
-#include "component/logger.hpp"
 #include "WinReg.hpp"
-//#include "definitions/t8_engine.hpp"
-#include "definitions\discovery.hpp"
 
 namespace platform
 {
@@ -59,6 +56,11 @@ namespace platform
 
 			//PC_TextChat_Print_Hook.create(0x000000000_g, PC_TextChat_Print_Stub); // Disable useless system messages passed into chat box
 			//BattleNet_API_RequestAppTicket_Hook.create(0x000000000_g, BattleNet_API_RequestAppTicket_stub); // Implement custom encryption token
+		}
+		
+		int priority() override
+		{
+			return 9996;
 		}
 	};
 }

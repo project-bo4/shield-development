@@ -7,10 +7,7 @@
 #include <utils/string.hpp>
 #include <utils/thread.hpp>
 #include <utils/compression.hpp>
-
 #include <exception/minidump.hpp>
-
-#define VERSION "1.0.0"
 
 namespace exception
 {
