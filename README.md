@@ -14,8 +14,10 @@ This repo only contains client-side detours and is not included with server code
 
 
 ## NOTES
+- Base SDK(well kinda...) used by this project is developed by [Maurice Heumann](https://github.com/momo5502); Thanks to the guy 🫡
+
 - To compile: clone repository using gitbash/powershell terminal; start generate.bat and it will grab all of required sub-modules and make visual studio solution which can be used to compile the client.
 
-- There are some 3rd-party project/tools that have been used; If you belive there is something originated from you and want to be credited please contact any of our social media accounts.
+- There are some 3rd-party project/tools that have influenced and helped the project in particular ways; If you belive there is something originated from you and want to be credited please contact any of our social media accounts.
 
 - This Project is created purely for educational purposes. its free and open-sourced under gnu license. developers are not responsible or liable for misuse of this product.
