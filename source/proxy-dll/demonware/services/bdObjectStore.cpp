@@ -1,6 +1,6 @@
 #include <std_include.hpp>
 #include "../services.hpp"
-#include "../picoproto.h"
+#include <picoproto.h>
 
 #include <utils/io.hpp>
 #include "../objects.hpp"

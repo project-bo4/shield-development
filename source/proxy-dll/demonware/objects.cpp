@@ -3,7 +3,7 @@
 #include <utils/string.hpp>
 #include <utils/cryptography.hpp>
 #include <component/platform.hpp>
-#include "tougprotocol.hpp"
+#include "protobuf_helper.hpp"
 
 #include "objects.hpp"
 
