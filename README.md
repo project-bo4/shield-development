@@ -1,5 +1,3 @@
-"**They tried to bury us, they didn't know we were seeds**"
-
 ![code](https://raw.githubusercontent.com/project-bo4/shield-development/master/assets/readme_header.jpg)
 
 ## SHIELD
@@ -12,7 +10,9 @@ This branch includes custom demonware server emulator built in to client. not fu
 
 ## INSTRUCTION
 1- clone repository with its sub-modules and use generate.bat to make visual studio solution then compile project and copy ``d3d11.dll`` into your bo4 folder.
-2- check and see if you have lpc files needed to play online under LPC folder in your game directory. there should be 12 items + 1 manifest; you should have them by default from original game but if its not there its fine you can get them [HERE](https://github.com/project-bo4/shield-development/releases/download/current/bo4_tu23_639_cf92ecf4a75d3f79_lpc.zip)
+
+2- check and see if you have lpc files needed to play online under LPC folder in your game directory. there should be 12 items + 1 manifest; you should have them by default from original game but if its not there its fine you can get them [HERE](https://github.com/project-bo4/shield-development/raw/demonware/assets/bo4_tu23_639_cf92ecf4a75d3f79_lpc.zip)
+
 3- start BlackOps4.exe
 
 
@@ -21,7 +21,7 @@ You can pull request and contribute to project if you are able to add something 
 
 
 ## IMPORTANT
-- In case of having problem with running game, Please double check everything before submitting issue. you should have read instructions and faq (will add it soon) before asking for support.
+- In case of having problem with running game, Please double check everything before submitting issue. you should have read instructions and faq (will add it soon) before asking for support from developers.
 
 
 ## NOTES
