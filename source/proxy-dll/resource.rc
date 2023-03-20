@@ -51,7 +51,7 @@ END
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
-ID_ICON                 ICON                    "resources/icon.ico"
+ID_ICON                      ICON                       "resources/icon.ico"
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -59,7 +59,10 @@ ID_ICON                 ICON                    "resources/icon.ico"
 // RCDATA
 //
 
-IMAGE_SPLASH            RCDATA                  "resources/splash.jpg"
+IMAGE_SPLASH                 RCDATA                    "resources/splash.jpg"
+
+DW_PUBLISHER_OBJECTS_LIST    RCDATA "resources/dw/publisher_objects_list.csv"
+DW_AUTH_TRAFFIC_SIGNING_KEY  RCDATA "resources/dw/auth_traffic_signing_key.dat"
 
 
 #endif    // English (United States) resources

@@ -163,5 +163,5 @@ namespace discovery
 		}
 	};
 }
-REGISTER_COMPONENT(discovery::component)
 
+//REGISTER_COMPONENT(discovery::component)

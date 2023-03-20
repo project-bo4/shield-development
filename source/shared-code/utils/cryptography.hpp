@@ -2,6 +2,8 @@
 
 #include <string>
 #include <tomcrypt.h>
+#include <xxhash32.h>
+#include <xxhash64.h>
 
 namespace utils::cryptography
 {
@@ -94,6 +96,18 @@ namespace utils::cryptography
 	{
 		std::string compute(const std::string& data, bool hex = false);
 		std::string compute(const uint8_t* data, size_t length, bool hex = false);
+	}
+
+	namespace xxh32
+	{
+		uint32_t compute(const std::string& data);
+		uint32_t compute(const uint8_t* data, size_t length);
+	}
+
+	namespace xxh64
+	{
+		uint64_t compute(const std::string& data);
+		uint64_t compute(const uint8_t* data, size_t length);
 	}
 
 	namespace base64

@@ -563,6 +563,26 @@ namespace utils::cryptography
 		return string::dump_hex(hash, "");
 	}
 
+	uint32_t xxh32::compute(const std::string& data)
+	{
+		return compute(cs(data.data()), data.size());
+	}
+
+	uint32_t xxh32::compute(const uint8_t* data, const size_t length)
+	{
+		return XXHash32::hash(data, length, 0);
+	}
+
+	uint64_t xxh64::compute(const std::string& data)
+	{
+		return compute(cs(data.data()), data.size());
+	}
+
+	uint64_t xxh64::compute(const uint8_t* data, const size_t length)
+	{
+		return XXHash64::hash(data, length, 0);
+	}
+	
 	std::string base64::encode(const uint8_t* data, const size_t len)
 	{
 		std::string result;

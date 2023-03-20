@@ -81,6 +81,7 @@ namespace utils::string
 	const char* va(const char* fmt, ...);
 
 	std::vector<std::string> split(const std::string& s, char delim);
+	std::vector<std::string> split(const std::string& s, const std::string& delim);
 
 	std::string to_lower(std::string text);
 	std::string to_upper(std::string text);
