@@ -7,9 +7,11 @@ A very experimental modification platform for Call of Duty®: Black Ops 4 run by
 
 This repository is designated as development period repo. final product will be set in a separate repo and is not guaranteed to carry over everything featured here.
 
+
 ## LIMITATIONS
 This repo only contains client-side detours and is not included with server code. As of right now, server code is planned to be private to let us maintain slight control over it and prevent and ban violatars those who cant even obey basic rules and tend to ruin experience of other users and take fun away from them.
 
+If you looking forward experimenting and in-dependent development from project-bo4 servers check out [demonware](https://github.com/project-bo4/shield-development/tree/demonware) branch including built-in bo4 dw server emulator.
 
 
 
