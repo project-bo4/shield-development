@@ -27,12 +27,7 @@ namespace demonware
 
 	void bdObjectStore::getUserObject(service_server* server, byte_buffer* buffer) const
 	{
-#ifdef DEBUG
-		utils::io::write_file(utils::string::va("demonware/bdObjectStore/getUserObject_%u", static_cast<uint32_t>(time(nullptr))), buffer->get_buffer());
-#endif
-
-		// TODO:
-		auto reply = server->create_reply(this->task_id());
+		auto reply = server->create_reply(this->task_id(), 20000/*BD_OBJECTSTORE_PROXY_OBJECT_NOT_FOUND*/);
 		reply->send();
 	}
 
@@ -71,10 +66,6 @@ namespace demonware
 
 	void bdObjectStore::getUserObjectsVectorized(service_server* server, byte_buffer* buffer) const
 	{
-#ifdef DEBUG
-		utils::io::write_file(utils::string::va("demonware/bdObjectStore/getUserObjectsVectorized_%u", static_cast<uint32_t>(time(nullptr))), buffer->get_buffer());
-#endif
-
 		std::string structed_data;
 		buffer->read_struct(&structed_data);
 
@@ -108,9 +99,24 @@ namespace demonware
 
 	void bdObjectStore::uploadUserObject(service_server* server, byte_buffer* buffer) const
 	{
-		// TODO:
-		auto reply = server->create_reply(this->task_id());
-		reply->send();
+		std::string structed_data;
+		buffer->read_struct(&structed_data);
+
+		picoproto::Message request_buffer;
+		request_buffer.ParseFromBytes(reinterpret_cast<uint8_t*>(structed_data.data()), structed_data.size());
+
+		std::string request = request_buffer.GetString(1);
+		std::string url = request_buffer.GetString(2);
+
+		std::string data = request_buffer.GetString(3);
+		std::string file = utils::string::split(url, '/')[8];
+		std::string path = get_user_file_path(file);
+
+
+		if (!utils::io::write_file(path, data))
+			logger::write(logger::LOG_TYPE_DEBUG, "[bdObjectStore::uploadUserObject] ERROR ON WRITING DATA");
+		else
+			logger::write(logger::LOG_TYPE_DEBUG, "[bdObjectStore::uploadUserObject] saved %s", file);
 	}
 
 	void bdObjectStore::uploadUserObjectsVectorized(service_server* server, byte_buffer* buffer) const

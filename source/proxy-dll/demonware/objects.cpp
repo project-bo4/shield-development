@@ -112,7 +112,7 @@ namespace demonware
 
 	std::string get_user_file_path(const std::string& file)
 	{
-		return platform::get_userdata_directory() + "/" + file;
+		return std::format("{}/{}", platform::get_userdata_directory(), file);
 	}
 
 	std::string get_user_file_checksum(std::string file_path)

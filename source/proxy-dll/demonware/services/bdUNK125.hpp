@@ -9,6 +9,7 @@ namespace demonware
 
 	private:
 		void task_unk1(service_server* server, byte_buffer* buffer) const;
+		void task_unk2(service_server* server, byte_buffer* buffer) const;
 		void task_unk3(service_server* server, byte_buffer* buffer) const;
 		void task_unk9(service_server* server, byte_buffer* buffer) const;
 	};

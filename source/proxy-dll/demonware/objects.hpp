@@ -19,6 +19,8 @@ namespace demonware
 		std::string contentURL;
 	};
 
+	std::string get_user_file_path(const std::string& file);
+
 	std::string generate_publisher_objects_list_json(const std::string& category);
 
 	std::string generate_user_objects_list_json();
