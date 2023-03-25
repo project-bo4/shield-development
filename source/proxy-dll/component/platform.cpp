@@ -2,6 +2,7 @@
 #include "platform.hpp"
 #include "loader/component_loader.hpp"
 #include <utils/hook.hpp>
+#include <utils/string.hpp>
 #include <utils/identity.hpp>
 #include <utils/cryptography.hpp>
 #include "WinReg.hpp"
@@ -26,6 +27,21 @@ namespace platform
 		}
 
 		return username.data();
+	}
+
+	std::string get_game_locale()
+	{
+		winreg::RegKey key;
+		winreg::RegResult result = key.TryOpen(HKEY_CURRENT_USER, L"SOFTWARE\\Blizzard Entertainment\\Battle.net\\Launch Options\\VIPR");
+		if (result)
+		{
+			if (auto localeSz = key.TryGetStringValue(L"LOCALE"))
+			{
+				return utils::string::convert(localeSz.GetValue());
+			}
+		}
+
+		return "";
 	}
 
 	std::string get_userdata_directory()
@@ -87,7 +103,7 @@ namespace platform
 
 			//PC_TextChat_Print_Hook.create(0x1422D4A20_g, PC_TextChat_Print_Stub); // Disable useless system messages passed into chat box
 			
-			logger::write(logger::LOG_TYPE_INFO, "[ PLATFORM ]: Using system name '%s' as BattleTag and hash '%llX' as BattleID", bnet_get_username(), bnet_get_userid());
+			logger::write(logger::LOG_TYPE_INFO, "[ PLATFORM ]: BattleTag: '%s', BattleID: '%llu', Locale: '%s'", bnet_get_username(), bnet_get_userid(), get_game_locale().c_str());
 		}
 	};
 }

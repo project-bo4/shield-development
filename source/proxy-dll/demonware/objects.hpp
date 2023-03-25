@@ -13,7 +13,7 @@ namespace demonware
 		std::string owner;
 		std::string name;
 		std::string checksum;
-		int64_t contentLength;
+		uint64_t contentLength;
 		int64_t created;
 		int64_t modified;
 		std::string contentURL;

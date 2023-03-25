@@ -1,6 +1,7 @@
 #include <std_include.hpp>
 #include "loader/component_loader.hpp"
 
+#include <utils/io.hpp>
 #include <utils/hook.hpp>
 #include <utils/thread.hpp>
 
@@ -450,6 +451,15 @@ namespace demonware
 
 			original_imports[result->first] = result->second;
 		}
+
+		void check_lpc_files()
+		{
+			if (!utils::io::file_exists("LPC/.manifest") || !utils::io::file_exists("LPC/core_ffotd_tu23_639_cf92ecf4a75d3f79.ff") || !utils::io::file_exists("LPC/core_playlists_tu23_639_cf92ecf4a75d3f79.ff"))
+			{
+				MessageBoxA(nullptr, "some required LPC files seems to be missing. You need to get and place them manually since this emulator doesnt host and provide those files; read instructions in github documentation for more info.",
+					"LPC Files Missing", MB_ICONERROR);
+			}
+		}
 	}
 
 	class component final : public component_interface
@@ -482,6 +492,8 @@ namespace demonware
 			register_hook("freeaddrinfo", io::freeaddrinfo_stub);
 			register_hook("getpeername", io::getpeername_stub);
 			register_hook("getsockname", io::getsockname_stub);
+
+			check_lpc_files();
 		}
 
 		void post_unpack() override
