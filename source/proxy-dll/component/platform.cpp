@@ -7,13 +7,14 @@
 #include <utils/cryptography.hpp>
 #include "WinReg.hpp"
 #include "definitions/t8_engine.hpp"
+#include "component/config.hpp"
 
 namespace platform
 {
 	uint64_t bnet_get_userid()
 	{
 		static uint64_t userid = 0;
-		if (!userid) userid = utils::cryptography::xxh32::compute(utils::identity::get_sys_username());
+		if (!userid) userid = utils::cryptography::xxh32::compute(bnet_get_username());
 
 		return userid;
 	}
@@ -23,7 +24,16 @@ namespace platform
 		static std::string username{};
 		if (username.empty())
 		{
-			username = utils::identity::get_sys_username();
+			std::string cfg = config::get_config_value("username");
+
+			if (cfg == config::noconfig() || cfg == "$system")
+			{
+				username = utils::identity::get_sys_username();
+			}
+			else
+			{
+				username = cfg;
+			}
 		}
 
 		return username.data();
@@ -79,7 +89,7 @@ namespace platform
 	public:
 		void pre_start() override
 		{
-			check_platform_registry();
+			config::register_config_value("username", "$system", "The username used ingame, $system to use your system name");
 		}
 
 		void post_unpack() override

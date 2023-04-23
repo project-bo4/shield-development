@@ -1,4 +1,5 @@
 #include <std_include.hpp>
+#include "component/config.hpp"
 #include "loader/component_loader.hpp"
 #include "definitions/t8_engine.hpp"
 #include "scheduler.hpp"
@@ -6,6 +7,7 @@
 
 namespace debugging
 {
+	static bool should_draw_debugging_info = false;
 	typedef short(__fastcall* UI_Model_GetModelForController_t)(int controllerIndex);
 	UI_Model_GetModelForController_t UI_Model_GetModelForController = (UI_Model_GetModelForController_t)0x143AD0200_g;
 
@@ -119,7 +121,6 @@ namespace debugging
 
 		void draw_debug_info()
 		{
-			static bool should_draw_debugging_info = false;
 			if (GetAsyncKeyState(VK_INSERT) & 0x01) should_draw_debugging_info ^= 1;
 
 			if (!should_draw_debugging_info) return;
@@ -148,6 +149,14 @@ namespace debugging
 class component final : public component_interface
 {
 public:
+	void pre_start() override
+	{
+		config::register_config_value("debug_info", "false", "Draw debugging info");
+
+		const std::string& dcfg = config::get_config_value("debug_info");
+
+		should_draw_debugging_info = dcfg != config::noconfig() && dcfg == "true";
+	}
 	void post_unpack() override
 	{	
 		scheduler::loop(draw_debug_info, scheduler::renderer);
