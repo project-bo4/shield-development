@@ -72,12 +72,13 @@ namespace config
 
         for (auto& [key, val] : configs)
         {
-            if (default_configs.find(key) != default_configs.end())
+            auto dval = default_configs.find(key);
+            if (dval != default_configs.end())
             {
-                defaultconfig& d = default_configs.at(key);
+                defaultconfig& d = dval->second;
                 stream << "# " << d.description << ", default: " << d.default_value << '\n';
             }
-            stream << key << '=' << val << "\n";
+            stream << key << '=' << val << "\n\n";
         }
 
         stream.close();
@@ -108,7 +109,7 @@ namespace config
         load_configs();
         if (configs.find(cfg) == configs.end())
         {
-            return noconfig();
+            return "";
         }
         return configs.at(cfg);
     }

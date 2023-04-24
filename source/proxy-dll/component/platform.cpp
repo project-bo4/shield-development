@@ -14,8 +14,28 @@ namespace platform
 	uint64_t bnet_get_userid()
 	{
 		static uint64_t userid = 0;
-		if (!userid) userid = utils::cryptography::xxh32::compute(bnet_get_username());
+		if (!userid) {
+			const std::string& cfg = config::get_config_value("useruid");
+			if (cfg == config::noconfig() || cfg == "$system")
+			{
+				userid = utils::cryptography::xxh32::compute(utils::identity::get_sys_username());
+			}
+			else if (cfg == "$username")
+			{
+				userid = utils::cryptography::xxh32::compute(bnet_get_username());
+			}
+			else
+			{
+				std::istringstream iss(cfg);
+				iss >> userid;
 
+				if (!userid)
+				{
+					userid = utils::cryptography::xxh32::compute(utils::identity::get_sys_username());
+				}
+			}
+		}
+		
 		return userid;
 	}
 
@@ -89,7 +109,9 @@ namespace platform
 	public:
 		void pre_start() override
 		{
+			check_platform_registry();
 			config::register_config_value("username", "$system", "The username used ingame, $system to use your system name");
+			config::register_config_value("useruid", "$system", "UID to bind the data, $system for system name, $username for your username config or the UID value");
 		}
 
 		void post_unpack() override

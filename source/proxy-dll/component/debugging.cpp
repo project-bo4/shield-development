@@ -153,9 +153,7 @@ public:
 	{
 		config::register_config_value("debug_info", "false", "Draw debugging info");
 
-		const std::string& dcfg = config::get_config_value("debug_info");
-
-		should_draw_debugging_info = dcfg != config::noconfig() && dcfg == "true";
+		should_draw_debugging_info = config::get_config_value("debug_info") == "true";
 	}
 	void post_unpack() override
 	{	
