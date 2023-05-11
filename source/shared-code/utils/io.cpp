@@ -78,6 +78,14 @@ namespace utils::io
 		return false;
 	}
 
+	std::string file_name(const std::string& path)
+	{
+		const auto pos = path.find_last_of('/');
+		if (pos == std::string::npos) return path;
+
+		return path.substr(pos + 1);
+	}
+
 	size_t file_size(const std::string& file)
 	{
 		if (file_exists(file))
@@ -92,6 +100,13 @@ namespace utils::io
 		}
 
 		return 0;
+	}
+
+	time_t file_timestamp(const std::string& file)
+	{
+		const auto time = std::chrono::clock_cast<std::chrono::system_clock>(std::filesystem::last_write_time(file));
+
+		return std::chrono::system_clock::to_time_t(time);
 	}
 
 	bool create_directory(const std::string& directory)
@@ -115,6 +130,8 @@ namespace utils::io
 
 		for (auto& file : std::filesystem::directory_iterator(directory))
 		{
+			if (std::filesystem::is_directory(file.path())) continue;
+
 			files.push_back(file.path().generic_string());
 		}
 

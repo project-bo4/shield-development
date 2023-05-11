@@ -34,6 +34,23 @@ namespace utils::string
 		return elems;
 	}
 
+	std::vector<std::string> split(const std::string& s, const std::string& delim)
+	{
+		size_t pos_start = 0, pos_end, delim_len = delim.length();
+		std::string token;
+		std::vector<std::string> elems;
+
+		while ((pos_end = s.find(delim, pos_start)) != std::string::npos) {
+			token = s.substr(pos_start, pos_end - pos_start);
+			pos_start = pos_end + delim_len;
+			elems.push_back(token);
+		}
+
+		elems.push_back(s.substr(pos_start));
+
+		return elems;
+	}
+	
 	std::string to_lower(std::string text)
 	{
 		std::transform(text.begin(), text.end(), text.begin(), [](const char input)

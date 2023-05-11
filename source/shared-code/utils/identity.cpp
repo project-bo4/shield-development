@@ -1,11 +1,12 @@
-#include "smbios.hpp"
+#include "identity.hpp"
 #include "memory.hpp"
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <intrin.h>
+#include <lmcons.h>
 
-namespace utils::smbios
+namespace utils::identity
 {
 	namespace
 	{
@@ -61,7 +62,19 @@ namespace utils::smbios
 		}
 	}
 
-	std::string get_uuid()
+	std::string get_sys_username()
+	{
+		char username[UNLEN + 1];
+		DWORD username_len = UNLEN + 1;
+		if (!GetUserNameA(username, &username_len))
+		{
+			return "N/A";
+		}
+
+		return std::string{ username, username_len - 1 };
+	}
+
+	std::string get_sys_uuid()
 	{
 		auto smbios_data = get_smbios_data();
 		auto* raw_data = reinterpret_cast<RawSMBIOSData*>(smbios_data.data());

@@ -8,23 +8,20 @@
 
 namespace logger
 {
-	std::string get_type_str(const int type)
+	const char* LogTypeNames[] =
 	{
-		switch (type)
-		{
-		case 1:
-			return "INFO";
-		case 2:
-			return "WARN";
-		case 3:
-			return "ERROR";
-		default:
-			return "DEBUG";
-		}
-	}
+		"DEBUG",
+		"INFO",
+		"WARN",
+		"ERROR"
+	};
 
 	void write(const int type, std::string str)
 	{
+#ifndef _DEBUG
+		if (type == LOG_TYPE_DEBUG) return;
+#endif // _DEBUG
+
 #ifdef OUTPUT_DEBUG_API
 		OutputDebugStringA(str.c_str());
 #endif // OUTPUT_DEBUG_API
@@ -38,7 +35,7 @@ namespace logger
 		stream << "" << std::put_time(t, "%Y-%m-%d %H:%M:%S") << "\t";
 #endif // PREPEND_TIMESTAMP
 
-		stream << "[ " << get_type_str(type) << " ] " << str << std::endl;
+		stream << "[ " << LogTypeNames[type] << " ] " << str << std::endl;
 	}
 
 	void write(const int type, const char* fmt, ...)
@@ -64,6 +61,10 @@ namespace logger
 	public:
 		void pre_start() override
 		{
+#ifdef REMOVE_PREVIOUS_LOG
+			utils::io::remove_file("project-bo4.log");
+#endif // REMOVE_PREVIOUS_LOG
+
 			write(LOG_TYPE_INFO,  "=======================================================================================================");
 			write(LOG_TYPE_INFO,  " Project-BO4 Initializing ... %s[0x%llX]", utils::nt::library{}.get_name().c_str(), utils::nt::library{}.get_ptr());
 			write(LOG_TYPE_INFO,  "=======================================================================================================");

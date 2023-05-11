@@ -125,7 +125,7 @@ namespace discovery
 
 		if (symbols_list.find("com_get_build_version") != symbols_list.end())
 		{
-			const char* build_version = utils::hook::invoke<const char*>(symbols_list["com_get_build_version"]); // Com_GetBuildVersion()
+			const char* build_version = utils::hook::invoke<const char*>(symbols_list["com_get_build_version"]);
 			logger::write(logger::LOG_TYPE_DEBUG, "Address-List Discovery Results for BlackOps4 %s", build_version);
 		}
 
@@ -163,5 +163,5 @@ namespace discovery
 		}
 	};
 }
-REGISTER_COMPONENT(discovery::component)
 
+//REGISTER_COMPONENT(discovery::component)

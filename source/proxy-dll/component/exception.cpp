@@ -72,7 +72,7 @@ namespace exception
 			utils::thread::suspend_other_threads();
 			show_mouse_cursor();
 
-			MessageBoxA(nullptr, error_str.data(), "Project-bo4 ERROR", MB_ICONERROR);
+			MessageBoxA(nullptr, error_str.data(), "Project-BO4 ERROR", MB_ICONERROR);
 			TerminateProcess(GetCurrentProcess(), exception_data.code);
 		}
 
@@ -84,7 +84,7 @@ namespace exception
 				++recovery_data.recovery_counts;
 
 				game::Com_Error(game::ERR_DROP, "Fatal error (0x%08X) at 0x%p (0x%p).\nA minidump has been written.\n\n"
-				                "BOIII has tried to recover your game, but it might not run stable anymore.\n\n"
+				                "Project-BO4 has tried to recover your game, but it might not run stable anymore.\n\n"
 				                "Make sure to update your graphics card drivers and install operating system updates!\n"
 				                "Closing or restarting Steam might also help.",
 				                exception_data.code, exception_data.address,
@@ -129,7 +129,7 @@ namespace exception
 				info.append("\r\n");
 			};
 
-			line("Project-bo4 Crash Dump");
+			line("Project-BO4 Crash Dump");
 			line("");
 			line(game::version_string);
 			//line("Version: "s + VERSION);

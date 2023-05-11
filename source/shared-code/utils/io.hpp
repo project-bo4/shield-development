@@ -12,7 +12,9 @@ namespace utils::io
 	bool write_file(const std::string& file, const std::string& data, bool append = false);
 	bool read_file(const std::string& file, std::string* data);
 	std::string read_file(const std::string& file);
+	std::string file_name(const std::string& path);
 	size_t file_size(const std::string& file);
+	time_t file_timestamp(const std::string& file);
 	bool create_directory(const std::string& directory);
 	bool directory_exists(const std::string& directory);
 	bool directory_is_empty(const std::string& directory);

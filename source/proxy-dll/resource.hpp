@@ -5,6 +5,9 @@
 #define ID_ICON                         102
 #define IMAGE_SPLASH                    103
 
+#define DW_PUBLISHER_OBJECTS_LIST       104
+#define DW_AUTH_TRAFFIC_SIGNING_KEY     105
+
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED

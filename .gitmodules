@@ -22,3 +22,9 @@
 [submodule "deps/winreg"]
 	path = deps/winreg
 	url = https://github.com/GiovanniDicanio/WinReg.git
+[submodule "deps/picoproto"]
+	path = deps/picoproto
+	url = https://github.com/petewarden/picoproto.git
+[submodule "deps/xxhash"]
+	path = deps/xxhash
+	url = https://github.com/stbrumme/xxhash.git
