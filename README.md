@@ -1,3 +1,4 @@
+
 ![code](https://raw.githubusercontent.com/project-bo4/shield-development/master/assets/readme_header.jpg)
 
 ## SHIELD
@@ -9,12 +10,19 @@ As of May11, 2023 we merged 'demonware' branch into 'master'. it includes a buil
 
 
 ## INSTRUCTION
--- you should have publisher files required for play online under LPC folder of your game installation. if its not the case then start original game through battlenet launcher once to get those downloaded.
+
+> you should have publisher files required for playing online under LPC folder of your game directory.
+> if its not the case then start original game through battlenet launcher once to get those downloaded.
 
 1- clone repository with its sub-modules and use generate.bat to make visual studio solution then compile project and copy ``d3d11.dll`` into your bo4 folder.
 
 2- start BlackOps4.exe
 
+*in case you wanted to revert back to original battlenet servers just delete ``d3d11.dll``. you can put it back later whenever you want to re-install client.*
+
+
+## SUBMITTING ISSUES
+github issues section is only for reporting programmatically errors of client. please dont use it for requesting features or seeking help with personal issues such as faulty game data or similar problems. use battlenet's scan and repair feature to fix those problems. 
 
 
 ## NOTES
@@ -23,3 +31,18 @@ As of May11, 2023 we merged 'demonware' branch into 'master'. it includes a buil
 - There are some 3rd-party project/tools that have influenced and helped the project in particular ways; If you belive there is something originated from you and want to be credited please contact any of our social media accounts.
 
 - This Project is created purely for educational purposes. its free and open-sourced under gnu license. developers are not responsible or liable for misuse of this product.
+
+
+## Roadmap
+### CLIENT-SIDE:
+- [x] Online Battlenet Connection Requirement Removal
+- [x] Built-in Demonware Server Emulation
+- [x] BlackBox Crash Reporting Component
+- [ ] Enable Aim-Assist for Game Controllers
+- [ ] In-game Interactable Console
+- [ ] Miscellaneous Features such as 1st person view fov 
+
+### SERVER-SIDE:
+- [X] Fully Functional Online Server Emulator
+- [ ] Implement Basic Matchmaking with QOS Logics
+- [ ] Try to Create Dedicated Server off Public Ship Builds

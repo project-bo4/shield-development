@@ -9,7 +9,7 @@
 #include <utils/compression.hpp>
 #include <exception/minidump.hpp>
 
-namespace exception
+namespace blackbox
 {
 	namespace
 	{
@@ -120,8 +120,101 @@ namespace exception
 			return timestamp;
 		}
 
+		const char* get_exception_string(DWORD exception)
+		{
+#define EXCEPTION_CASE(CODE)	case EXCEPTION_##CODE : return "EXCEPTION_" #CODE
+			switch (exception)
+			{
+				EXCEPTION_CASE(ACCESS_VIOLATION);
+				EXCEPTION_CASE(DATATYPE_MISALIGNMENT);
+				EXCEPTION_CASE(BREAKPOINT);
+				EXCEPTION_CASE(SINGLE_STEP);
+				EXCEPTION_CASE(ARRAY_BOUNDS_EXCEEDED);
+				EXCEPTION_CASE(FLT_DENORMAL_OPERAND);
+				EXCEPTION_CASE(FLT_DIVIDE_BY_ZERO);
+				EXCEPTION_CASE(FLT_INEXACT_RESULT);
+				EXCEPTION_CASE(FLT_INVALID_OPERATION);
+				EXCEPTION_CASE(FLT_OVERFLOW);
+				EXCEPTION_CASE(FLT_STACK_CHECK);
+				EXCEPTION_CASE(FLT_UNDERFLOW);
+				EXCEPTION_CASE(INT_DIVIDE_BY_ZERO);
+				EXCEPTION_CASE(INT_OVERFLOW);
+				EXCEPTION_CASE(PRIV_INSTRUCTION);
+				EXCEPTION_CASE(IN_PAGE_ERROR);
+				EXCEPTION_CASE(ILLEGAL_INSTRUCTION);
+				EXCEPTION_CASE(NONCONTINUABLE_EXCEPTION);
+				EXCEPTION_CASE(STACK_OVERFLOW);
+				EXCEPTION_CASE(INVALID_DISPOSITION);
+				EXCEPTION_CASE(GUARD_PAGE);
+				EXCEPTION_CASE(INVALID_HANDLE);
+			default:
+				return "UNKNOWN";
+			}
+#undef EXCEPTION_CASE
+		}
+
+		std::string get_memory_registers(const LPEXCEPTION_POINTERS exceptioninfo)
+		{
+			if (IsBadReadPtr(exceptioninfo, sizeof(EXCEPTION_POINTERS)))
+				return "";
+
+			const auto* ctx = exceptioninfo->ContextRecord;
+
+			std::string registers_scroll{};
+			registers_scroll.append("registers:\r\n{\r\n");
+
+			const auto x64register = [&registers_scroll](const char* key, DWORD64 value)
+			{
+				registers_scroll.append(utils::string::va("\t%s = 0x%llX\r\n", key, value));
+			};
+
+			x64register("rax", ctx->Rax);
+			x64register("rbx", ctx->Rbx);
+			x64register("rcx", ctx->Rcx);
+			x64register("rdx", ctx->Rdx);
+			x64register("rsp", ctx->Rsp);
+			x64register("rbp", ctx->Rbp);
+			x64register("rsi", ctx->Rsi);
+			x64register("rdi", ctx->Rdi);
+			x64register("r8", ctx->R8);
+			x64register("r9", ctx->R9);
+			x64register("r10", ctx->R10);
+			x64register("r11", ctx->R11);
+			x64register("r12", ctx->R12);
+			x64register("r13", ctx->R13);
+			x64register("r14", ctx->R14);
+			x64register("r15", ctx->R15);
+			x64register("rip", ctx->Rip);
+
+			registers_scroll.append("}");
+
+			return registers_scroll;
+		}
+
+		std::string get_callstack_summary(int trace_max_depth = 18)
+		{
+			std::string callstack_scroll("callstack:\r\n{\r\n");
+			void* stack[32]; if (trace_max_depth > 32) trace_max_depth = 32;
+			uint16_t count = RtlCaptureStackBackTrace(1, trace_max_depth, stack, NULL);
+
+			for (uint16_t i = 0; i < count; i++)
+			{
+				const auto prnt = utils::nt::library::get_by_address(stack[i]);
+				size_t rva = reinterpret_cast<uint64_t>(stack[i]) - reinterpret_cast<uint64_t>(prnt.get_ptr());
+
+				callstack_scroll.append(std::format("\t{}: {:012X}\r\n", prnt.get_name(), rva));
+			}
+			callstack_scroll.append("}");
+
+			return callstack_scroll;
+		}
+
 		std::string generate_crash_info(const LPEXCEPTION_POINTERS exceptioninfo)
 		{
+			const auto main_module = utils::nt::library{};
+			const auto& build_info = game::version_string;
+			const auto thread_id = ::GetCurrentThreadId(); // TODO: Find Thread's Name
+
 			std::string info{};
 			const auto line = [&info](const std::string& text)
 			{
@@ -129,35 +222,38 @@ namespace exception
 				info.append("\r\n");
 			};
 
-			line("Project-BO4 Crash Dump");
-			line("");
-			line(game::version_string);
-			//line("Version: "s + VERSION);
-			line("Timestamp: "s + get_timestamp());
-			line(utils::string::va("Exception: 0x%08X", exceptioninfo->ExceptionRecord->ExceptionCode));
-			line(utils::string::va("Address: 0x%llX", exceptioninfo->ExceptionRecord->ExceptionAddress));
-			line(utils::string::va("Base: 0x%llX", get_base()));
+			line(build_info + " Crash Report\r\n");
 
-#pragma warning(push)
-#pragma warning(disable: 4996)
-			OSVERSIONINFOEXA version_info;
-			ZeroMemory(&version_info, sizeof(version_info));
-			version_info.dwOSVersionInfoSize = sizeof(version_info);
-			GetVersionExA(reinterpret_cast<LPOSVERSIONINFOA>(&version_info));
-#pragma warning(pop)
+			line(utils::string::va("Exception Code: 0x%08X(%s)", exceptioninfo->ExceptionRecord->ExceptionCode, 
+				get_exception_string(exceptioninfo->ExceptionRecord->ExceptionCode)));
+			line(utils::string::va("Exception Addr: 0x%llX[%s]", exceptioninfo->ExceptionRecord->ExceptionAddress, 
+				utils::nt::library::get_by_address(exceptioninfo->ExceptionRecord->ExceptionAddress).get_name().c_str()));
+			line(utils::string::va("Main Module: %s[0x%llX]", main_module.get_name().c_str(), main_module.get_ptr()));
+			line(utils::string::va("Thread ID: %d(%s)", GetCurrentThreadId(), is_game_thread() ? "Main Thread" : "Auxiliary Threads"));
 
-			line(utils::string::va("OS Version: %u.%u", version_info.dwMajorVersion, version_info.dwMinorVersion));
+			if (exceptioninfo->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION)
+			{
+				line(utils::string::va("\r\nExtended Info: Attempted to %s 0x%012X",
+					exceptioninfo->ExceptionRecord->ExceptionInformation[0] == 1 ? "write to" : "read from",
+					exceptioninfo->ExceptionRecord->ExceptionInformation[1]));
+			}
+
+			line("\r\n");
+			line(get_callstack_summary(18));
+			line(get_memory_registers(exceptioninfo));
+
+			line("\r\nTimestamp: "s + get_timestamp());
 
 			return info;
 		}
 
 		void write_minidump(const LPEXCEPTION_POINTERS exceptioninfo)
 		{
-			const std::string crash_name = utils::string::va("minidumps/bo4-crash-%s.zip",
+			const std::string crash_name = utils::string::va("minidumps/shield-crash-%s.zip",
 			                                                 get_timestamp().data());
 
 			utils::compression::zip::archive zip_file{};
-			zip_file.add("crash.dmp", create_minidump(exceptioninfo));
+			zip_file.add("crash.dmp", exception::create_minidump(exceptioninfo));
 			zip_file.add("info.txt", generate_crash_info(exceptioninfo));
 			zip_file.write(crash_name, "Project-bo4 Crash Dump");
 		}
@@ -210,4 +306,4 @@ namespace exception
 	};
 }
 
-REGISTER_COMPONENT(exception::component)
+REGISTER_COMPONENT(blackbox::component)
