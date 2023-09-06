@@ -44,7 +44,7 @@ namespace debugging
 			{
 				float color[4] = { 0.8f, 1.0f, 0.3, 0.8f };
 
-				sz = get_connectivity_info_string(infoBitmask);
+				const char* sz = get_connectivity_info_string(infoBitmask);
 
 				game::ScreenPlacement* scrPlace = game::ScrPlace_GetView(0);
 
