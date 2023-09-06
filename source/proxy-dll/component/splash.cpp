@@ -1,7 +1,7 @@
 #include <std_include.hpp>
+#include "splash.hpp"
 #include "loader/component_loader.hpp"
 
-#include "splash.hpp"
 #include "resource.hpp"
 
 #include <utils/nt.hpp>

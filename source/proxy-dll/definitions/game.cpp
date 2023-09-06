@@ -1,5 +1,5 @@
 #include <std_include.hpp>
-#include "definitions\t8_engine.hpp"
+#include "game.hpp"
 #include "loader/component_loader.hpp"
 
 namespace game

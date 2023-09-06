@@ -1,6 +1,7 @@
 #include <std_include.hpp>
-#include "definitions\discovery.hpp"
+#include "discovery.hpp"
 #include "loader/component_loader.hpp"
+
 #include <utils/hook.hpp>
 #include <utils/signature.hpp>
 

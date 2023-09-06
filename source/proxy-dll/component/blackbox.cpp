@@ -1,6 +1,6 @@
 #include <std_include.hpp>
+#include "definitions/game.hpp"
 #include "loader/component_loader.hpp"
-#include "definitions/t8_engine.hpp"
 
 #include <utils/hook.hpp>
 #include <utils/io.hpp>

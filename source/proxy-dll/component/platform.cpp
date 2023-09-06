@@ -1,13 +1,14 @@
 #include <std_include.hpp>
 #include "platform.hpp"
+#include "definitions/game.hpp"
 #include "loader/component_loader.hpp"
+
 #include <utils/hook.hpp>
 #include <utils/string.hpp>
 #include <utils/identity.hpp>
 #include <utils/json_config.hpp>
 #include <utils/cryptography.hpp>
-#include "WinReg.hpp"
-#include "definitions/t8_engine.hpp"
+#include <WinReg.hpp>
 
 namespace platform
 {

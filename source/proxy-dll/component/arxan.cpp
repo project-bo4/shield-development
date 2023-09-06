@@ -5,10 +5,10 @@
 #include <utils/string.hpp>
 
 
-namespace integrity
+namespace arxan
 {
 	namespace
-	{	
+	{
 		const std::vector<std::pair<uint8_t*, size_t>>& get_text_sections()
 		{
 			static const std::vector<std::pair<uint8_t*, size_t>> text = []
@@ -88,7 +88,7 @@ namespace integrity
 		}
 
 		uint32_t adjust_integrity_checksum(const uint64_t return_address, uint8_t* stack_frame,
-		                                   const uint32_t current_checksum)
+			const uint32_t current_checksum)
 		{
 			const auto handler_address = reverse_b(return_address - 5);
 			const auto* context = search_handler_context(stack_frame, current_checksum);
@@ -96,7 +96,7 @@ namespace integrity
 			if (!context)
 			{
 				MessageBoxA(nullptr, utils::string::va("No frame offset for: %llX", handler_address), "Error",
-				            MB_ICONERROR);
+					MB_ICONERROR);
 				TerminateProcess(GetCurrentProcess(), 0xBAD);
 				return current_checksum;
 			}
@@ -107,8 +107,8 @@ namespace integrity
 			if (current_checksum != correct_checksum)
 			{
 #ifndef NDEBUG
-				/*printf("Adjusting checksum (%llX): %X -> %X\n", handler_address,
-				       current_checksum, correct_checksum);*/
+				/*logger::write(logger::LOG_TYPE_DEBUG, "Adjusting checksum (%llX): %X -> %X\n", handler_address,
+					   current_checksum, correct_checksum);*/
 #endif
 			}
 
@@ -130,38 +130,38 @@ namespace integrity
 
 			const auto other_frame_offset = static_cast<uint8_t>(next_inst >> 16);
 			static const auto stub = utils::hook::assemble([](utils::hook::assembler& a)
-			{
-				a.push(rax);
+				{
+					a.push(rax);
 
-				a.mov(rax, qword_ptr(rsp, 8));
-				a.sub(rax, 2); // Skip the push we inserted
+					a.mov(rax, qword_ptr(rsp, 8));
+					a.sub(rax, 2); // Skip the push we inserted
 
-				a.push(rax);
-				a.pushad64();
+					a.push(rax);
+					a.pushad64();
 
-				a.mov(r8, qword_ptr(rsp, 0x88));
-				a.mov(rcx, rax);
-				a.mov(rdx, rbp);
-				a.call_aligned(adjust_integrity_checksum);
+					a.mov(r8, qword_ptr(rsp, 0x88));
+					a.mov(rcx, rax);
+					a.mov(rdx, rbp);
+					a.call_aligned(adjust_integrity_checksum);
 
-				a.mov(qword_ptr(rsp, 0x80), rax);
+					a.mov(qword_ptr(rsp, 0x80), rax);
 
-				a.popad64();
-				a.pop(rax);
+					a.popad64();
+					a.pop(rax);
 
-				a.add(rsp, 8);
+					a.add(rsp, 8);
 
-				a.mov(dword_ptr(rdx, rcx, 4), eax);
+					a.mov(dword_ptr(rdx, rcx, 4), eax);
 
-				a.pop(rax); // return addr
-				a.xchg(rax, qword_ptr(rsp)); // switch with push
+					a.pop(rax); // return addr
+					a.xchg(rax, qword_ptr(rsp)); // switch with push
 
-				a.add(dword_ptr(rbp, rax), 0xFFFFFFFF);
+					a.add(dword_ptr(rbp, rax), 0xFFFFFFFF);
 
-				a.mov(rax, dword_ptr(rdx, rcx, 4)); // restore rax
+					a.mov(rax, dword_ptr(rdx, rcx, 4)); // restore rax
 
-				a.ret();
-			});
+					a.ret();
+				});
 
 			// push other_frame_offset
 			utils::hook::set<uint16_t>(game_address, static_cast<uint16_t>(0x6A | (other_frame_offset << 8)));
@@ -182,32 +182,32 @@ namespace integrity
 
 			const auto jump_target = utils::hook::extract<void*>(reinterpret_cast<void*>(next_inst_addr + 1));
 			const auto stub = utils::hook::assemble([jump_target](utils::hook::assembler& a)
-			{
-				a.push(rax);
+				{
+					a.push(rax);
 
-				a.mov(rax, qword_ptr(rsp, 8));
-				a.push(rax);
+					a.mov(rax, qword_ptr(rsp, 8));
+					a.push(rax);
 
-				a.pushad64();
+					a.pushad64();
 
-				a.mov(r8, qword_ptr(rsp, 0x88));
-				a.mov(rcx, rax);
-				a.mov(rdx, rbp);
-				a.call_aligned(adjust_integrity_checksum);
+					a.mov(r8, qword_ptr(rsp, 0x88));
+					a.mov(rcx, rax);
+					a.mov(rdx, rbp);
+					a.call_aligned(adjust_integrity_checksum);
 
-				a.mov(qword_ptr(rsp, 0x80), rax);
+					a.mov(qword_ptr(rsp, 0x80), rax);
 
-				a.popad64();
-				a.pop(rax);
+					a.popad64();
+					a.pop(rax);
 
-				a.add(rsp, 8);
+					a.add(rsp, 8);
 
-				a.mov(dword_ptr(rdx, rcx, 4), eax);
+					a.mov(dword_ptr(rdx, rcx, 4), eax);
 
-				a.add(rsp, 8);
+					a.add(rsp, 8);
 
-				a.jmp(jump_target);
-			});
+					a.jmp(jump_target);
+				});
 
 			utils::hook::call(game_address, stub);
 		}
@@ -303,8 +303,160 @@ namespace integrity
 
 			return get_thread_context_hook.invoke<BOOL>(thread_handle, context);
 		}
+
+		utils::hook::detour create_mutex_ex_a_hook;
+		HANDLE create_mutex_ex_a_stub(const LPSECURITY_ATTRIBUTES attributes, const LPCSTR name, const DWORD flags,
+			const DWORD access)
+		{
+			if (name == "$ IDA trusted_idbs"s || name == "$ IDA registry mutex $"s)
+			{
+				return nullptr;
+			}
+
+			return create_mutex_ex_a_hook.invoke<HANDLE>(attributes, name, flags, access);
+		}
+
+		bool remove_evil_keywords_from_string(const UNICODE_STRING& string)
+		{
+			static const std::wstring evil_keywords[] =
+			{
+				L"IDA",
+				L"ida",
+				L"HxD",
+				L"cheatengine",
+				L"Cheat Engine",
+				L"x96dbg",
+				L"x32dbg",
+				L"x64dbg",
+				L"Wireshark",
+			};
+
+			if (!string.Buffer || !string.Length)
+			{
+				return false;
+			}
+
+			const std::wstring_view path(string.Buffer, string.Length / sizeof(string.Buffer[0]));
+
+			bool modified = false;
+			for (const auto& keyword : evil_keywords)
+			{
+				while (true)
+				{
+					const auto pos = path.find(keyword);
+					if (pos == std::wstring::npos)
+					{
+						break;
+					}
+
+					modified = true;
+
+					for (size_t i = 0; i < keyword.size(); ++i)
+					{
+						string.Buffer[pos + i] = L'a';
+					}
+				}
+			}
+
+			return modified;
+		}
+
+		bool remove_evil_keywords_from_string(wchar_t* str, const size_t length)
+		{
+			UNICODE_STRING unicode_string{};
+			unicode_string.Buffer = str;
+			unicode_string.Length = static_cast<uint16_t>(length);
+			unicode_string.MaximumLength = unicode_string.Length;
+
+			return remove_evil_keywords_from_string(unicode_string);
+		}
+
+		bool remove_evil_keywords_from_string(char* str, const size_t length)
+		{
+			std::string_view str_view(str, length);
+			std::wstring wstr(str_view.begin(), str_view.end());
+
+			if (!remove_evil_keywords_from_string(wstr.data(), wstr.size()))
+			{
+				return false;
+			}
+
+			const std::string regular_str(wstr.begin(), wstr.end());
+			memcpy(str, regular_str.data(), length);
+
+			return true;
+		}
+
+		int WINAPI get_window_text_a_stub(const HWND wnd, const LPSTR str, const int max_count)
+		{
+			std::wstring wstr{};
+			wstr.resize(max_count);
+
+			const auto res = GetWindowTextW(wnd, wstr.data(), max_count);
+			if (res)
+			{
+				remove_evil_keywords_from_string(wstr.data(), res);
+
+				const std::string regular_str(wstr.begin(), wstr.end());
+				memset(str, 0, max_count);
+				memcpy(str, regular_str.data(), res);
+			}
+
+			return res;
+		}
+
+		utils::hook::detour nt_query_system_information_hook;
+		NTSTATUS NTAPI nt_query_system_information_stub(const SYSTEM_INFORMATION_CLASS system_information_class,
+			const PVOID system_information,
+			const ULONG system_information_length,
+			const PULONG return_length)
+		{
+			const auto status = nt_query_system_information_hook.invoke<NTSTATUS>(
+				system_information_class, system_information, system_information_length, return_length);
+
+			if (NT_SUCCESS(status))
+			{
+				if (system_information_class == SystemProcessInformation && !utils::nt::is_shutdown_in_progress())
+				{
+					auto addr = static_cast<uint8_t*>(system_information);
+					while (true)
+					{
+						const auto info = reinterpret_cast<SYSTEM_PROCESS_INFORMATION*>(addr);
+						remove_evil_keywords_from_string(info->ImageName);
+
+						if (!info->NextEntryOffset)
+						{
+							break;
+						}
+
+						addr = addr + info->NextEntryOffset;
+					}
+				}
+			}
+
+			return status;
+		}
+
+		utils::hook::detour nt_query_information_process_hook;
+		NTSTATUS WINAPI nt_query_information_process_stub(const HANDLE handle, const PROCESSINFOCLASS info_class,
+			const PVOID info,
+			const ULONG info_length, const PULONG ret_length)
+		{
+			NTSTATUS status = nt_query_information_process_hook.invoke<NTSTATUS>(handle, info_class, info, info_length,
+				ret_length);
+
+			if (NT_SUCCESS(status))
+			{
+				if (info_class == ProcessImageFileName || static_cast<int>(info_class) == 43 /*ProcessImageFileNameWin32*/)
+				{
+					remove_evil_keywords_from_string(*static_cast<UNICODE_STRING*>(info));
+				}
+			}
+
+			return status;
+		}
 	}
-	
+
 	class component final : public component_interface
 	{
 	public:
@@ -315,6 +467,22 @@ namespace integrity
 			create_thread_hook.create(CreateThread, create_thread_stub);
 			auto* get_thread_context_func = utils::nt::library("kernelbase.dll").get_proc<void*>("GetThreadContext");
 			get_thread_context_hook.create(get_thread_context_func, get_thread_context_stub);
+
+			create_mutex_ex_a_hook.create(CreateMutexExA, create_mutex_ex_a_stub);
+
+			utils::hook::copy(this->window_text_buffer_, GetWindowTextA, sizeof(this->window_text_buffer_));
+			utils::hook::jump(GetWindowTextA, get_window_text_a_stub, true, true);
+			utils::hook::move_hook(GetWindowTextA);
+
+			const utils::nt::library ntdll("ntdll.dll");
+
+			const auto nt_query_information_process = ntdll.get_proc<void*>("NtQueryInformationProcess");
+			nt_query_information_process_hook.create(nt_query_information_process,
+				nt_query_information_process_stub);
+
+			const auto nt_query_system_information = ntdll.get_proc<void*>("NtQuerySystemInformation");
+			nt_query_system_information_hook.create(nt_query_system_information, nt_query_system_information_stub);
+			nt_query_system_information_hook.move();
 
 
 			/*************************************************************************************************************
@@ -335,7 +503,10 @@ namespace integrity
 		{
 			return 9999;
 		}
+
+	private:
+		uint8_t window_text_buffer_[15]{};
 	};
 }
 
-REGISTER_COMPONENT(integrity::component)
+REGISTER_COMPONENT(arxan::component)

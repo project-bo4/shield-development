@@ -1,14 +1,14 @@
 #include <std_include.hpp>
+#include "objects.hpp"
+
+#include "protobuf_helper.hpp"
+
+#include "resource.hpp"
+#include <utils/nt.hpp>
 #include <utils/io.hpp>
 #include <utils/string.hpp>
 #include <utils/cryptography.hpp>
 #include <component/platform.hpp>
-#include "protobuf_helper.hpp"
-
-#include "objects.hpp"
-
-#include "resource.hpp"
-#include <utils/nt.hpp>
 
 #define PUBLISHER_OBJECTS_ENUMERATE_LPC_DIR
 
