@@ -39,10 +39,12 @@ github issues section is only for reporting programmatically errors of client. p
 - [x] Built-in Demonware Server Emulation
 - [x] BlackBox Crash Reporting Component
 - [ ] Enable Aim-Assist for Game Controllers
-- [ ] In-game Interactable Console
+- [x] In-game Interactable Console
 - [ ] Miscellaneous Features such as 1st person view fov 
 
+- [ ] Fix *uncommon* runtime black screen issue along other instabilities
+
 ### SERVER-SIDE:
-- [X] Fully Functional Online Server Emulator
+- [x] Fully Functional Online Server Emulator
 - [ ] Implement Basic Matchmaking with QOS Logics
 - [ ] Try to Create Dedicated Server off Public Ship Builds
