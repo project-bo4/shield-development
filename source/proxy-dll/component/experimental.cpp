@@ -10,7 +10,7 @@ namespace experimental
 		utils::hook::detour liveinventory_getitemquantity_hook;
 		int liveinventory_getitemquantity_stub(int controller_index, const int item_id)
 		{
-			return 1; // TODO: Higher quanity for zombie consumable loot
+			return 999;
 
 			return liveinventory_getitemquantity_hook.invoke<int>(controller_index, item_id);
 		}
