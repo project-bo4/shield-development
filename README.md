@@ -30,7 +30,9 @@ github issues section is only for reporting programmatically errors of client. p
 
 - There are some 3rd-party project/tools that have influenced and helped the project in particular ways; If you belive there is something originated from you and want to be credited please contact any of our social media accounts.
 
-- This Project is created purely for educational purposes. its free and open-sourced under gnu license. developers are not responsible or liable for misuse of this product.
+- This Project is created purely for educational purposes. its free and open-sourced under gnu license. developers are not responsible or liable for misuse of this product.`
+
+- Discord Server link :https://discord.gg/AXECAzJJGU
 
 
 ## Roadmap
