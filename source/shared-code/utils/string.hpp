@@ -98,4 +98,7 @@ namespace utils::string
 	std::wstring convert(const std::string& str);
 
 	std::string replace(std::string str, const std::string& from, const std::string& to);
+
+	double match(const std::string& input, const std::string& text);
+	bool compare(const std::string& s1, const std::string& s2, bool sensetive = false);
 }
