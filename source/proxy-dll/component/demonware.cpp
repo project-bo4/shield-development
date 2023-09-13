@@ -509,6 +509,9 @@ namespace demonware
 			utils::hook::copy_string(0x144A27C70_g, "http://prod.umbrella.demonware.net");
 			utils::hook::copy_string(0x144A2BAA0_g, "http://prod.uno.demonware.net/v1.0");
 			utils::hook::copy_string(0x144A29CB0_g, "http://%s:%d/auth/");
+			
+			utils::hook::set(0x142DD0E10_g, 0xC301B0); // Live_Qos_Finished
+			utils::hook::set(0x1438C2C70_g, 0xC301B0); // Live_Contracts? related to bdUNK125
 		}
 
 		void pre_destroy() override
