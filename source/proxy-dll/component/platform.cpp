@@ -18,7 +18,7 @@ namespace platform
 		if (!userid)
 		{
 			uint32_t default_xuid = utils::cryptography::xxh32::compute(utils::identity::get_sys_username());
-			userid = utils::json_config::ReadUnsignedInteger("identity", "xuid", default_xuid);
+			userid = utils::json_config::ReadUnsignedInteger64("identity", "xuid", default_xuid);
 		}
 
 		return userid;

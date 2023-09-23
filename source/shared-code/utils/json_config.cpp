@@ -70,6 +70,41 @@ namespace utils::json_config
 		return section;
 	}
 
+	bool ReadBoolean(const char* szSection, const char* szKey, bool bolDefaultValue)
+	{
+		rapidjson::Document& doc = get_json_document();
+		rapidjson::Value& section = get_json_section(szSection);
+
+		if (!section.HasMember(szKey)) {
+			section.AddMember(rapidjson::StringRef(szKey), bolDefaultValue, doc.GetAllocator());
+		}
+		else if (!section[szKey].IsBool()) {
+			section[szKey].SetBool(bolDefaultValue);
+		}
+		else {
+			return section[szKey].GetBool();
+		}
+
+		write_json_config();
+		return section[szKey].GetBool();
+	}
+
+	void WriteBoolean(const char* szSection, const char* szKey, bool bolValue)
+	{
+		rapidjson::Document& doc = get_json_document();
+		rapidjson::Value& section = get_json_section(szSection);
+
+		if (!section.HasMember(szKey)) {
+			section.AddMember(rapidjson::StringRef(szKey), bolValue, doc.GetAllocator());
+		}
+		else {
+			section[szKey].SetBool(bolValue);
+		}
+
+		write_json_config();
+	}
+
+
 	std::string ReadString(const char* szSection, const char* szKey, const std::string& strDefaultValue)
 	{
 		rapidjson::Document& doc = get_json_document();
@@ -104,7 +139,42 @@ namespace utils::json_config
 		write_json_config();
 	}
 
-	unsigned int ReadUnsignedInteger(const char* szSection, const char* szKey, unsigned int iDefaultValue)
+
+	int32_t ReadInteger(const char* szSection, const char* szKey, int32_t iDefaultValue)
+	{
+		rapidjson::Document& doc = get_json_document();
+		rapidjson::Value& section = get_json_section(szSection);
+
+		if (!section.HasMember(szKey)) {
+			section.AddMember(rapidjson::StringRef(szKey), iDefaultValue, doc.GetAllocator());
+		}
+		else if (!section[szKey].IsInt()) {
+			section[szKey].SetInt(iDefaultValue);
+		}
+		else {
+			return section[szKey].GetInt();
+		}
+
+		write_json_config();
+		return section[szKey].GetInt();
+	}
+
+	void WriteInteger(const char* szSection, const char* szKey, int32_t iValue)
+	{
+		rapidjson::Document& doc = get_json_document();
+		rapidjson::Value& section = get_json_section(szSection);
+
+		if (!section.HasMember(szKey)) {
+			section.AddMember(rapidjson::StringRef(szKey), iValue, doc.GetAllocator());
+		}
+		else {
+			section[szKey].SetInt(iValue);
+		}
+
+		write_json_config();
+	}
+
+	uint32_t ReadUnsignedInteger(const char* szSection, const char* szKey, uint32_t iDefaultValue)
 	{
 		rapidjson::Document& doc = get_json_document();
 		rapidjson::Value& section = get_json_section(szSection);
@@ -123,12 +193,7 @@ namespace utils::json_config
 		return section[szKey].GetUint();
 	}
 
-	int ReadInteger(const char* szSection, const char* szKey, int iDefaultValue)
-	{
-		return static_cast<int>(ReadUnsignedInteger(szSection, szKey, static_cast<unsigned int>(iDefaultValue)));
-	}
-
-	void WriteUnsignedInteger(const char* szSection, const char* szKey, unsigned int iValue)
+	void WriteUnsignedInteger(const char* szSection, const char* szKey, uint32_t iValue)
 	{
 		rapidjson::Document& doc = get_json_document();
 		rapidjson::Value& section = get_json_section(szSection);
@@ -143,40 +208,69 @@ namespace utils::json_config
 		write_json_config();
 	}
 
-	void WriteInteger(const char* szSection, const char* szKey, int iValue)
-	{
-		ReadUnsignedInteger(szSection, szKey, static_cast<unsigned int>(iValue));
-	}
-
-	bool ReadBoolean(const char* szSection, const char* szKey, bool bolDefaultValue)
+	int64_t ReadInteger64(const char* szSection, const char* szKey, int64_t iDefaultValue)
 	{
 		rapidjson::Document& doc = get_json_document();
 		rapidjson::Value& section = get_json_section(szSection);
 
 		if (!section.HasMember(szKey)) {
-			section.AddMember(rapidjson::StringRef(szKey), bolDefaultValue, doc.GetAllocator());
+			section.AddMember(rapidjson::StringRef(szKey), iDefaultValue, doc.GetAllocator());
 		}
-		else if (!section[szKey].IsBool()) {
-			section[szKey].SetBool(bolDefaultValue);
+		else if (!section[szKey].IsInt64()) {
+			section[szKey].SetInt64(iDefaultValue);
 		}
 		else {
-			return section[szKey].GetBool();
+			return section[szKey].GetInt64();
 		}
 
 		write_json_config();
-		return section[szKey].GetBool();
+		return section[szKey].GetInt64();
 	}
 
-	void WriteBoolean(const char* szSection, const char* szKey, bool bolValue)
+	void WriteInteger64(const char* szSection, const char* szKey, int64_t iValue)
 	{
 		rapidjson::Document& doc = get_json_document();
 		rapidjson::Value& section = get_json_section(szSection);
 
 		if (!section.HasMember(szKey)) {
-			section.AddMember(rapidjson::StringRef(szKey), bolValue, doc.GetAllocator());
+			section.AddMember(rapidjson::StringRef(szKey), iValue, doc.GetAllocator());
 		}
 		else {
-			section[szKey].SetBool(bolValue);
+			section[szKey].SetInt64(iValue);
+		}
+
+		write_json_config();
+	}
+
+	uint64_t ReadUnsignedInteger64(const char* szSection, const char* szKey, uint64_t iDefaultValue)
+	{
+		rapidjson::Document& doc = get_json_document();
+		rapidjson::Value& section = get_json_section(szSection);
+
+		if (!section.HasMember(szKey)) {
+			section.AddMember(rapidjson::StringRef(szKey), iDefaultValue, doc.GetAllocator());
+		}
+		else if (!section[szKey].IsUint64()) {
+			section[szKey].SetUint64(iDefaultValue);
+		}
+		else {
+			return section[szKey].GetUint64();
+		}
+
+		write_json_config();
+		return section[szKey].GetUint64();
+	}
+
+	void WriteUnsignedInteger64(const char* szSection, const char* szKey, uint64_t iValue)
+	{
+		rapidjson::Document& doc = get_json_document();
+		rapidjson::Value& section = get_json_section(szSection);
+
+		if (!section.HasMember(szKey)) {
+			section.AddMember(rapidjson::StringRef(szKey), iValue, doc.GetAllocator());
+		}
+		else {
+			section[szKey].SetUint64(iValue);
 		}
 
 		write_json_config();

@@ -153,12 +153,12 @@ namespace blackbox
 #undef EXCEPTION_CASE
 		}
 
-		std::string get_memory_registers(const LPEXCEPTION_POINTERS exceptioninfo)
+		std::string get_memory_registers(const LPEXCEPTION_POINTERS exception_info)
 		{
-			if (IsBadReadPtr(exceptioninfo, sizeof(EXCEPTION_POINTERS)))
+			if (IsBadReadPtr(exception_info, sizeof(EXCEPTION_POINTERS)))
 				return "";
 
-			const auto* ctx = exceptioninfo->ContextRecord;
+			const auto* ctx = exception_info->ContextRecord;
 
 			std::string registers_scroll{};
 			registers_scroll.append("registers:\r\n{\r\n");
@@ -191,29 +191,36 @@ namespace blackbox
 			return registers_scroll;
 		}
 
-		std::string get_callstack_summary(int trace_max_depth = 18)
+		std::string get_callstack_summary(void* exception_addr, int trace_depth = 32)
 		{
 			std::string callstack_scroll("callstack:\r\n{\r\n");
-			void* stack[32]; if (trace_max_depth > 32) trace_max_depth = 32;
-			uint16_t count = RtlCaptureStackBackTrace(1, trace_max_depth, stack, NULL);
 
-			for (uint16_t i = 0; i < count; i++)
+			void* backtrace_stack[32]; int backtrace_stack_size = ARRAYSIZE(backtrace_stack);
+			if (trace_depth > backtrace_stack_size) trace_depth = backtrace_stack_size;
+
+			size_t count = RtlCaptureStackBackTrace(0, trace_depth, backtrace_stack, NULL);
+
+			auto itr = std::find(backtrace_stack, backtrace_stack + backtrace_stack_size, exception_addr);
+			auto exception_start_index = std::distance(backtrace_stack, itr);
+
+			for (size_t i = exception_start_index; i < count; i++)
 			{
-				const auto prnt = utils::nt::library::get_by_address(stack[i]);
-				size_t rva = reinterpret_cast<uint64_t>(stack[i]) - reinterpret_cast<uint64_t>(prnt.get_ptr());
+				const auto from = utils::nt::library::get_by_address(backtrace_stack[i]);
+				size_t rva = reinterpret_cast<uint64_t>(backtrace_stack[i]) - reinterpret_cast<uint64_t>(from.get_ptr());
 
-				callstack_scroll.append(std::format("\t{}: {:012X}\r\n", prnt.get_name(), rva));
+				if (from.get_name() == "BlackOps4.exe"s) rva += 0x140000000;
+
+				callstack_scroll.append(std::format("\t{}: {:012X}\r\n", from.get_name(), rva));
 			}
-			callstack_scroll.append("}");
 
-			return callstack_scroll;
+			return callstack_scroll.append("}");
 		}
 
 		std::string generate_crash_info(const LPEXCEPTION_POINTERS exceptioninfo)
 		{
-			const auto main_module = utils::nt::library{};
 			const auto& build_info = game::version_string;
-			const auto thread_id = ::GetCurrentThreadId(); // TODO: Find Thread's Name
+			const auto main_module = utils::nt::library{};
+			const auto rip_address = exceptioninfo->ExceptionRecord->ExceptionAddress;
 
 			std::string info{};
 			const auto line = [&info](const std::string& text)
@@ -239,7 +246,7 @@ namespace blackbox
 			}
 
 			line("\r\n");
-			line(get_callstack_summary(18));
+			line(get_callstack_summary(rip_address));
 			line(get_memory_registers(exceptioninfo));
 
 			line("\r\nTimestamp: "s + get_timestamp());
