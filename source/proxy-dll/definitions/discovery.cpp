@@ -2,8 +2,8 @@
 #include "discovery.hpp"
 #include "loader/component_loader.hpp"
 
-#include <utils/hook.hpp>
-#include <utils/signature.hpp>
+#include <utilities/hook.hpp>
+#include <utilities/signature.hpp>
 
 std::unordered_map<std::string, size_t> symbols_list;
 
@@ -98,7 +98,7 @@ namespace discovery
 				continue;
 			}
 
-			utils::hook::signature::signature_result scan = utils::hook::signature(std::string(i.sig, strlen(i.sig))).process();
+			utilities::hook::signature::signature_result scan = utilities::hook::signature(std::string(i.sig, strlen(i.sig))).process();
 
 			if (scan.size() == 0 || scan.size() > 1)
 			{
@@ -126,7 +126,7 @@ namespace discovery
 
 		if (symbols_list.find("com_get_build_version") != symbols_list.end())
 		{
-			const char* build_version = utils::hook::invoke<const char*>(symbols_list["com_get_build_version"]);
+			const char* build_version = utilities::hook::invoke<const char*>(symbols_list["com_get_build_version"]);
 			logger::write(logger::LOG_TYPE_DEBUG, "Address-List Discovery Results for BlackOps4 %s", build_version);
 		}
 

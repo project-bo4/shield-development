@@ -1,7 +1,7 @@
 #pragma once
 
 #include "servers/base_server.hpp"
-#include <utils/cryptography.hpp>
+#include <utilities/cryptography.hpp>
 
 namespace demonware
 {
@@ -31,7 +31,7 @@ namespace demonware
 
 		T* find(const std::string& name)
 		{
-			const auto address = utils::cryptography::jenkins_one_at_a_time::compute(name);
+			const auto address = utilities::cryptography::jenkins_one_at_a_time::compute(name);
 			return find(address);
 		}
 

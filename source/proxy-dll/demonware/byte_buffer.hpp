@@ -30,8 +30,59 @@ namespace demonware
 		bool read_struct(std::string* output);
 		bool read_data_type(char expected);
 
-		bool read_array_header(unsigned char expected, unsigned int* element_count,
-		                       unsigned int* element_size = nullptr);
+		bool read_array_header(const unsigned char expected
+			, unsigned int* element_count, unsigned int* element_size);
+
+		template <typename T>
+		bool read_array(const unsigned char expected, std::vector<T>* vec)
+		{
+			const auto using_types = this->is_using_data_types();
+			this->set_use_data_types(false);
+
+			uint32_t ItemCount, itemSize;
+
+			if (!this->read_array_header(expected, &ItemCount, &itemSize)) return false;
+			if (itemSize != sizeof(T)) return false;
+
+			for (size_t i = 0; i < ItemCount; i++)
+			{
+				T item{};
+
+				if (!this->read(sizeof(T), &item)) return false;
+
+				vec->push_back(item);
+			}
+
+			this->set_use_data_types(using_types);
+			return true;
+		}
+
+		template <typename T>
+		bool read_array(const unsigned char expected, std::map<T, T>* map)
+		{
+			const auto using_types = this->is_using_data_types();
+			this->set_use_data_types(false);
+
+			uint32_t ItemCount, itemSize;
+
+			if (!this->read_array_header(expected, &ItemCount, &itemSize)) return false;
+			if (itemSize != sizeof(T)) return false;
+
+			for (size_t i = 0; i < ItemCount / 2; i++)
+			{
+				T key{}, value{};
+
+				if (!this->read(sizeof(T), &key)
+					|| !this->read(sizeof(T), &value)
+					) return false;
+
+				map->insert({ key, value });
+			}
+
+			this->set_use_data_types(using_types);
+			return true;
+		}
+
 
 		bool write_bool(bool data);
 		bool write_byte(char data);
@@ -51,7 +102,44 @@ namespace demonware
 		bool write_struct(const char* data, int length);
 		bool write_struct(const std::string& data);
 
-		bool write_array_header(unsigned char type, unsigned int element_count, unsigned int element_size);
+		bool write_array_header(const unsigned char type,
+			const unsigned int element_count, const unsigned int element_size);
+
+		template <typename T>
+		bool write_array(const unsigned char type, const std::vector<T>& vec)
+		{
+			const auto using_types = this->is_using_data_types();
+			this->set_use_data_types(false);
+
+			auto result = write_array_header(type, vec.size(), sizeof(T));
+
+			for (size_t i = 0; i < vec.size(); i++)
+			{
+				result &= this->write(sizeof(T), &vec[i]);
+			}
+
+			this->set_use_data_types(using_types);
+			return result;
+		}
+
+		template <typename T>
+		bool write_array(const unsigned char type, const std::map<T, T>& map)
+		{
+			const auto using_types = this->is_using_data_types();
+			this->set_use_data_types(false);
+
+			auto result = write_array_header(type, map.size() * 2, sizeof(T));
+
+			for (const auto& item : map)
+			{
+				result &= this->write(sizeof(T), &item.first);
+				result &= this->write(sizeof(T), &item.second);
+			}
+
+			this->set_use_data_types(using_types);
+			return result;
+		}
+
 
 		bool read(int bytes, void* output);
 		bool write(int bytes, const void* data);

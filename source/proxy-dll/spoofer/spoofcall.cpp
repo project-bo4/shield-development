@@ -1,6 +1,6 @@
 #include <std_include.hpp>
 
-#include <utils/hook.hpp>
+#include <utilities/hook.hpp>
 #include <stack>
 
 namespace spoofcall
@@ -30,7 +30,7 @@ namespace spoofcall
 			return res;
 		}
 
-		void callstack_return_stub(utils::hook::assembler& a)
+		void callstack_return_stub(utilities::hook::assembler& a)
 		{
 			a.push(rax);
 			a.pushad64();
@@ -49,14 +49,14 @@ namespace spoofcall
 		{
 			const auto placeholder = 0x1403CF1C6_g;
 			
-			utils::hook::set<uint8_t>(placeholder - 2, 0xFF); // fakes a call
-			utils::hook::nop(placeholder, 1);
-			utils::hook::jump(placeholder + 1, utils::hook::assemble(callstack_return_stub));
+			utilities::hook::set<uint8_t>(placeholder - 2, 0xFF); // fakes a call
+			utilities::hook::nop(placeholder, 1);
+			utilities::hook::jump(placeholder + 1, utilities::hook::assemble(callstack_return_stub));
 
 			return placeholder;
 		}
 
-		void callstack_stub(utils::hook::assembler& a)
+		void callstack_stub(utilities::hook::assembler& a)
 		{
 			a.push(rax);
 
@@ -83,7 +83,7 @@ namespace spoofcall
 		static bool spoofer_initialized = false;
 		if (!spoofer_initialized)
 		{
-			callstack_proxy_addr = utils::hook::assemble(callstack_stub);
+			callstack_proxy_addr = utilities::hook::assemble(callstack_stub);
 		}
 
 		address_to_call = funcAddr;

@@ -79,7 +79,7 @@ namespace exception
 
 	std::string create_minidump(const LPEXCEPTION_POINTERS exceptioninfo)
 	{
-		const utils::nt::handle file_handle = write_dump_to_temp_file(exceptioninfo);
+		const utilities::nt::handle file_handle = write_dump_to_temp_file(exceptioninfo);
 		return read_file(file_handle);
 	}
 }

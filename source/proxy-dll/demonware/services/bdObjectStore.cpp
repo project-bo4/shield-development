@@ -3,8 +3,8 @@
 #include "../objects.hpp"
 
 #include <picoproto.h>
-#include <utils/io.hpp>
-#include <utils/cryptography.hpp>
+#include <utilities/io.hpp>
+#include <utilities/cryptography.hpp>
 #include <component/platform.hpp>
 
 namespace demonware
@@ -109,10 +109,10 @@ namespace demonware
 		std::string url = request_buffer.GetString(2);
 		std::string data = request_buffer.GetString(3);
 
-		std::string file = utils::string::split(url, '/')[8];
+		std::string file = utilities::string::split(url, '/')[8];
 		std::string path = get_user_file_path(file);
 
-		if (!utils::io::write_file(path, data))
+		if (!utilities::io::write_file(path, data))
 			logger::write(logger::LOG_TYPE_DEBUG, "[bdObjectStore::uploadUserObject] error on writing '%s'", file.data());
 		else
 			logger::write(logger::LOG_TYPE_DEBUG, "[bdObjectStore::uploadUserObject] saved user file '%s'", file.data());
@@ -147,12 +147,12 @@ namespace demonware
 			const rapidjson::Value& name = objects[i]["metadata"]["name"];
 			const rapidjson::Value& checksum = objects[i]["metadata"]["checksum"];
 
-			std::string data = utils::cryptography::base64::decode(content.GetString());
+			std::string data = utilities::cryptography::base64::decode(content.GetString());
 			const auto path = std::format("{}/{}", platform::get_userdata_directory(), name.GetString());
 
 			uploaded_objects_list.push_back(name.GetString());
 
-			if (!utils::io::write_file(path, data))
+			if (!utilities::io::write_file(path, data))
 				logger::write(logger::LOG_TYPE_DEBUG, "[bdObjectStore::uploadUserObjectsVectorized] error on writing '%s'", name.GetString());
 			else
 				logger::write(logger::LOG_TYPE_DEBUG, "[bdObjectStore::uploadUserObjectsVectorized] saved user file '%s'", name.GetString());

@@ -3,7 +3,7 @@
 #include "component/scheduler.hpp"
 #include "loader/component_loader.hpp"
 
-#include <utils/string.hpp>
+#include <utilities/string.hpp>
 
 namespace debugging
 {
@@ -29,7 +29,7 @@ namespace debugging
 
 			connectionInfoString[42] = NULL;
 
-			return utils::string::va("%s", connectionInfoString);
+			return utilities::string::va("%s", connectionInfoString);
 		}
 		
 		void draw_debug_info()

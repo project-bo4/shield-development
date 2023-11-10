@@ -3,8 +3,8 @@
 #include "auth3_server.hpp"
 #include "../keys.hpp"
 
-#include <utils/cryptography.hpp>
-#include <utils/string.hpp>
+#include <utilities/cryptography.hpp>
+#include <utilities/string.hpp>
 
 namespace demonware
 {
@@ -84,7 +84,7 @@ namespace demonware
 			{
 				auto& token_field = extra_data["account_token"];
 				std::string token_b64(token_field.GetString(), token_field.GetStringLength());
-				account_token = utils::cryptography::base64::decode(token_b64);
+				account_token = utilities::cryptography::base64::decode(token_b64);
 			}
 		}
 
@@ -104,13 +104,13 @@ namespace demonware
 		strncpy_s(ticket.m_username, sizeof(ticket.m_username), session_token.data(), session_token.length());
 		std::memcpy(ticket.m_sessionKey, session_key.data(), 24);
 
-		const auto client_ticket_b64 = utils::cryptography::base64::encode(reinterpret_cast<const unsigned char*>(&ticket), sizeof(ticket));
+		const auto client_ticket_b64 = utilities::cryptography::base64::encode(reinterpret_cast<const unsigned char*>(&ticket), sizeof(ticket));
 
 		// server_ticket
 		uint8_t server_ticket[128];
 		std::memset(&server_ticket, 0, sizeof server_ticket);
 		std::memcpy(server_ticket, session_key.data(), 24);
-		const auto server_ticket_b64 = utils::cryptography::base64::encode(server_ticket, 128);
+		const auto server_ticket_b64 = utilities::cryptography::base64::encode(server_ticket, 128);
 
 		demonware::set_session_key(session_key);
 
@@ -128,7 +128,7 @@ namespace demonware
 		extra.AddMember("username", username, extra.GetAllocator());
 		extra.AddMember("time_to_live", 9999, extra.GetAllocator());
 
-		const auto lul = utils::cryptography::base64::encode("lul");
+		const auto lul = utilities::cryptography::base64::encode("lul");
 		extra.AddMember("extended_data", lul, extra.GetAllocator());
 
 		rapidjson::StringBuffer extra_buffer{};
@@ -170,8 +170,8 @@ namespace demonware
 		result.append("HTTP/1.1 200 OK\r\n");
 		result.append("Server: TornadoServer/4.5.3\r\n");
 		result.append("Content-Type: application/json\r\n");
-		result.append(utils::string::va("Date: %s GMT\r\n", date));
-		result.append(utils::string::va("Content-Length: %d\r\n\r\n", buffer.GetLength()));
+		result.append(utilities::string::va("Date: %s GMT\r\n", date));
+		result.append(utilities::string::va("Content-Length: %d\r\n\r\n", buffer.GetLength()));
 		result.append(buffer.GetString(), buffer.GetLength());
 
 		raw_reply reply(result);

@@ -1,13 +1,13 @@
 #include <std_include.hpp>
 #include "base_server.hpp"
 
-#include <utils/cryptography.hpp>
+#include <utilities/cryptography.hpp>
 
 namespace demonware
 {
 	base_server::base_server(std::string name): name_(std::move(name))
 	{
-		this->address_ = utils::cryptography::jenkins_one_at_a_time::compute(this->name_);
+		this->address_ = utilities::cryptography::jenkins_one_at_a_time::compute(this->name_);
 	}
 
 	const std::string& base_server::get_name() const

@@ -1,12 +1,12 @@
 #include <std_include.hpp>
 #include "keys.hpp"
 
-#include <utils/cryptography.hpp>
-#include <utils/string.hpp>
-#include <utils/io.hpp>
+#include <utilities/cryptography.hpp>
+#include <utilities/string.hpp>
+#include <utilities/io.hpp>
 
 #include "resource.hpp"
-#include <utils/nt.hpp>
+#include <utilities/nt.hpp>
 
 
 namespace demonware
@@ -41,7 +41,7 @@ namespace demonware
 		pos++;
 
 		// calculate hmac
-		result = utils::cryptography::hmac_sha1::compute(std::string(buffer, pos), std::string(dataxx, data_size));
+		result = utilities::cryptography::hmac_sha1::compute(std::string(buffer, pos), std::string(dataxx, data_size));
 
 		// save output
 		std::memcpy(dest, result.data(), std::min(20u, (dest_size - out_offset)));
@@ -69,7 +69,7 @@ namespace demonware
 			pos++;
 
 			// calculate hmac
-			result = utils::cryptography::hmac_sha1::compute(std::string(buffer, pos), std::string(dataxx, data_size));
+			result = utilities::cryptography::hmac_sha1::compute(std::string(buffer, pos), std::string(dataxx, data_size));
 
 			// save output
 			std::memcpy(dest + out_offset, result.data(), std::min(20u, (dest_size - out_offset)));
@@ -79,14 +79,14 @@ namespace demonware
 
 	void derive_keys_iw8()
 	{
-		std::string BD_AUTH_TRAFFIC_SIGNING_KEY = utils::nt::load_resource(DW_AUTH_TRAFFIC_SIGNING_KEY);
+		std::string BD_AUTH_TRAFFIC_SIGNING_KEY = utilities::nt::load_resource(DW_AUTH_TRAFFIC_SIGNING_KEY);
 
-		const auto packet_hash = utils::cryptography::sha1::compute(packet_buffer);
+		const auto packet_hash = utilities::cryptography::sha1::compute(packet_buffer);
 
 		char out_1[24];
 		calculate_hmacs(data.m_session_key, 24, BD_AUTH_TRAFFIC_SIGNING_KEY.data(), 294, out_1, 24);
 
-		auto data_3 = utils::cryptography::hmac_sha1::compute(std::string(out_1, 24), packet_hash);
+		auto data_3 = utilities::cryptography::hmac_sha1::compute(std::string(out_1, 24), packet_hash);
 
 		char out_2[16];
 		calculate_hmacs(data_3.data(), 20, "CLIENTCHAL", 10, out_2, 16);
@@ -101,10 +101,10 @@ namespace demonware
 		std::memcpy(data.m_enc_key, &out_3[56], 16);
 
 #ifndef NDEBUG
-		logger::write(logger::LOG_TYPE_DEBUG, "[DW] Response id: %s", utils::string::dump_hex(std::string(&out_2[8], 8)).data());
-		logger::write(logger::LOG_TYPE_DEBUG, "[DW] Hash verify: %s", utils::string::dump_hex(std::string(&out_3[20], 20)).data());
-		logger::write(logger::LOG_TYPE_DEBUG, "[DW] AES dec key: %s", utils::string::dump_hex(std::string(&out_3[40], 16)).data());
-		logger::write(logger::LOG_TYPE_DEBUG, "[DW] AES enc key: %s", utils::string::dump_hex(std::string(&out_3[56], 16)).data());
+		logger::write(logger::LOG_TYPE_DEBUG, "[DW] Response id: %s", utilities::string::dump_hex(std::string(&out_2[8], 8)).data());
+		logger::write(logger::LOG_TYPE_DEBUG, "[DW] Hash verify: %s", utilities::string::dump_hex(std::string(&out_3[20], 20)).data());
+		logger::write(logger::LOG_TYPE_DEBUG, "[DW] AES dec key: %s", utilities::string::dump_hex(std::string(&out_3[40], 16)).data());
+		logger::write(logger::LOG_TYPE_DEBUG, "[DW] AES enc key: %s", utilities::string::dump_hex(std::string(&out_3[56], 16)).data());
 		logger::write(logger::LOG_TYPE_DEBUG, "[DW] Bravo 6, going dark.");
 #endif
 	}

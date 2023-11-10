@@ -1,5 +1,5 @@
 #include <std_include.hpp>
-#include <utils/nt.hpp>
+#include <utilities/nt.hpp>
 
 extern "C"
 {
@@ -27,7 +27,7 @@ extern "C"
 
 size_t get_base()
 {
-	static auto base = size_t(utils::nt::library{}.get_ptr());
+	static auto base = size_t(utilities::nt::library{}.get_ptr());
 	assert(base && "Failed to resolve base");
 	return base;
 }

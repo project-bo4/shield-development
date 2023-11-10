@@ -3,7 +3,7 @@
 #include "game_console.hpp"
 #include "loader/component_loader.hpp"
 
-#include <utils/nt.hpp>
+#include <utilities/nt.hpp>
 
 #define OUTPUT_DEBUG_API
 #define OUTPUT_GAME_CONSOLE
@@ -64,11 +64,11 @@ namespace logger
 		void pre_start() override
 		{
 #ifdef REMOVE_PREVIOUS_LOG
-			utils::io::remove_file("project-bo4.log");
+			utilities::io::remove_file("project-bo4.log");
 #endif // REMOVE_PREVIOUS_LOG
 
 			write(LOG_TYPE_INFO, "=======================================================================================================");
-			write(LOG_TYPE_INFO, " Project-BO4 Initializing ... %s[0x%llX]", utils::nt::library{}.get_name().c_str(), utils::nt::library{}.get_ptr());
+			write(LOG_TYPE_INFO, " Project-BO4 Initializing ... %s[0x%llX]", utilities::nt::library{}.get_name().c_str(), utilities::nt::library{}.get_ptr());
 			write(LOG_TYPE_INFO, "=======================================================================================================");
 		}
 

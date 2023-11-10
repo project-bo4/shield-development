@@ -1,8 +1,8 @@
 #include <std_include.hpp>
 #include "loader/component_loader.hpp"
 
-#include <utils/hook.hpp>
-#include <utils/string.hpp>
+#include <utilities/hook.hpp>
+#include <utilities/string.hpp>
 
 
 namespace arxan
@@ -15,7 +15,7 @@ namespace arxan
 			{
 				std::vector<std::pair<uint8_t*, size_t>> texts{};
 
-				const utils::nt::library game{};
+				const utilities::nt::library game{};
 				for (const auto& section : game.get_section_headers())
 				{
 					if (section->Characteristics & IMAGE_SCN_MEM_EXECUTE)
@@ -95,7 +95,7 @@ namespace arxan
 
 			if (!context)
 			{
-				MessageBoxA(nullptr, utils::string::va("No frame offset for: %llX", handler_address), "Error",
+				MessageBoxA(nullptr, utilities::string::va("No frame offset for: %llX", handler_address), "Error",
 					MB_ICONERROR);
 				TerminateProcess(GetCurrentProcess(), 0xBAD);
 				return current_checksum;
@@ -125,11 +125,11 @@ namespace arxan
 
 			if ((next_inst & 0xFF00FFFF) != 0xFF004583)
 			{
-				throw std::runtime_error(utils::string::va("Unable to patch intact basic block: %llX", game_address));
+				throw std::runtime_error(utilities::string::va("Unable to patch intact basic block: %llX", game_address));
 			}
 
 			const auto other_frame_offset = static_cast<uint8_t>(next_inst >> 16);
-			static const auto stub = utils::hook::assemble([](utils::hook::assembler& a)
+			static const auto stub = utilities::hook::assemble([](utilities::hook::assembler& a)
 				{
 					a.push(rax);
 
@@ -164,8 +164,8 @@ namespace arxan
 				});
 
 			// push other_frame_offset
-			utils::hook::set<uint16_t>(game_address, static_cast<uint16_t>(0x6A | (other_frame_offset << 8)));
-			utils::hook::call(game_address + 2, stub);
+			utilities::hook::set<uint16_t>(game_address, static_cast<uint16_t>(0x6A | (other_frame_offset << 8)));
+			utilities::hook::call(game_address + 2, stub);
 		}
 
 		void patch_split_basic_block_integrity_check(void* address)
@@ -177,11 +177,11 @@ namespace arxan
 
 			if (*reinterpret_cast<uint8_t*>(next_inst_addr) != 0xE9)
 			{
-				throw std::runtime_error(utils::string::va("Unable to patch split basic block: %llX", game_address));
+				throw std::runtime_error(utilities::string::va("Unable to patch split basic block: %llX", game_address));
 			}
 
-			const auto jump_target = utils::hook::extract<void*>(reinterpret_cast<void*>(next_inst_addr + 1));
-			const auto stub = utils::hook::assemble([jump_target](utils::hook::assembler& a)
+			const auto jump_target = utilities::hook::extract<void*>(reinterpret_cast<void*>(next_inst_addr + 1));
+			const auto stub = utilities::hook::assemble([jump_target](utilities::hook::assembler& a)
 				{
 					a.push(rax);
 
@@ -209,7 +209,7 @@ namespace arxan
 					a.jmp(jump_target);
 				});
 
-			utils::hook::call(game_address, stub);
+			utilities::hook::call(game_address, stub);
 		}
 
 		void search_and_patch_integrity_checks()
@@ -235,7 +235,7 @@ namespace arxan
 
 		void** get_tls_callbacks()
 		{
-			const utils::nt::library game{};
+			const utilities::nt::library game{};
 			const auto& entry = game.get_optional_header()->DataDirectory[IMAGE_DIRECTORY_ENTRY_TLS];
 			if (!entry.VirtualAddress || !entry.Size)
 			{
@@ -254,7 +254,7 @@ namespace arxan
 				original_first_tls_callback = *tls_callbacks;
 			}
 
-			utils::hook::set(tls_callbacks, nullptr);
+			utilities::hook::set(tls_callbacks, nullptr);
 		}
 
 		void restore_tls_callbacks()
@@ -262,17 +262,17 @@ namespace arxan
 			auto* tls_callbacks = get_tls_callbacks();
 			if (tls_callbacks)
 			{
-				utils::hook::set(tls_callbacks, original_first_tls_callback);
+				utilities::hook::set(tls_callbacks, original_first_tls_callback);
 			}
 		}
 
-		utils::hook::detour create_thread_hook;
+		utilities::hook::detour create_thread_hook;
 		HANDLE WINAPI create_thread_stub(const LPSECURITY_ATTRIBUTES thread_attributes, const SIZE_T stack_size,
 			const LPTHREAD_START_ROUTINE start_address, const LPVOID parameter,
 			const DWORD creation_flags,
 			const LPDWORD thread_id)
 		{
-			if (utils::nt::library::get_by_address(start_address) == utils::nt::library{})
+			if (utilities::nt::library::get_by_address(start_address) == utilities::nt::library{})
 			{
 				restore_tls_callbacks();
 
@@ -285,15 +285,15 @@ namespace arxan
 				creation_flags, thread_id);
 		}
 
-		utils::hook::detour get_thread_context_hook;
+		utilities::hook::detour get_thread_context_hook;
 		BOOL WINAPI get_thread_context_stub(const HANDLE thread_handle, const LPCONTEXT context)
 		{
 			constexpr auto debug_registers_flag = (CONTEXT_DEBUG_REGISTERS & ~CONTEXT_AMD64);
 			if (context && (context->ContextFlags & debug_registers_flag))
 			{
 				auto* source = _ReturnAddress();
-				const auto game = utils::nt::library{};
-				const auto source_module = utils::nt::library::get_by_address(source);
+				const auto game = utilities::nt::library{};
+				const auto source_module = utilities::nt::library::get_by_address(source);
 
 				if (source_module == game)
 				{
@@ -304,7 +304,7 @@ namespace arxan
 			return get_thread_context_hook.invoke<BOOL>(thread_handle, context);
 		}
 
-		utils::hook::detour create_mutex_ex_a_hook;
+		utilities::hook::detour create_mutex_ex_a_hook;
 		HANDLE create_mutex_ex_a_stub(const LPSECURITY_ATTRIBUTES attributes, const LPCSTR name, const DWORD flags,
 			const DWORD access)
 		{
@@ -405,7 +405,7 @@ namespace arxan
 			return res;
 		}
 
-		utils::hook::detour nt_query_system_information_hook;
+		utilities::hook::detour nt_query_system_information_hook;
 		NTSTATUS NTAPI nt_query_system_information_stub(const SYSTEM_INFORMATION_CLASS system_information_class,
 			const PVOID system_information,
 			const ULONG system_information_length,
@@ -416,7 +416,7 @@ namespace arxan
 
 			if (NT_SUCCESS(status))
 			{
-				if (system_information_class == SystemProcessInformation && !utils::nt::is_shutdown_in_progress())
+				if (system_information_class == SystemProcessInformation && !utilities::nt::is_shutdown_in_progress())
 				{
 					auto addr = static_cast<uint8_t*>(system_information);
 					while (true)
@@ -437,7 +437,7 @@ namespace arxan
 			return status;
 		}
 
-		utils::hook::detour nt_query_information_process_hook;
+		utilities::hook::detour nt_query_information_process_hook;
 		NTSTATUS WINAPI nt_query_information_process_stub(const HANDLE handle, const PROCESSINFOCLASS info_class,
 			const PVOID info,
 			const ULONG info_length, const PULONG ret_length)
@@ -465,16 +465,16 @@ namespace arxan
 			disable_tls_callbacks();
 
 			create_thread_hook.create(CreateThread, create_thread_stub);
-			auto* get_thread_context_func = utils::nt::library("kernelbase.dll").get_proc<void*>("GetThreadContext");
+			auto* get_thread_context_func = utilities::nt::library("kernelbase.dll").get_proc<void*>("GetThreadContext");
 			get_thread_context_hook.create(get_thread_context_func, get_thread_context_stub);
 
 			create_mutex_ex_a_hook.create(CreateMutexExA, create_mutex_ex_a_stub);
 
-			utils::hook::copy(this->window_text_buffer_, GetWindowTextA, sizeof(this->window_text_buffer_));
-			utils::hook::jump(GetWindowTextA, get_window_text_a_stub, true, true);
-			utils::hook::move_hook(GetWindowTextA);
+			utilities::hook::copy(this->window_text_buffer_, GetWindowTextA, sizeof(this->window_text_buffer_));
+			utilities::hook::jump(GetWindowTextA, get_window_text_a_stub, true, true);
+			utilities::hook::move_hook(GetWindowTextA);
 
-			const utils::nt::library ntdll("ntdll.dll");
+			const utilities::nt::library ntdll("ntdll.dll");
 
 			const auto nt_query_information_process = ntdll.get_proc<void*>("NtQueryInformationProcess");
 			nt_query_information_process_hook.create(nt_query_information_process,

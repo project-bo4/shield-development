@@ -1,7 +1,7 @@
 #include <std_include.hpp>
 #include "loader/component_loader.hpp"
 
-#include <utils/hook.hpp>
+#include <utilities/hook.hpp>
 
 namespace unlockall
 {
@@ -103,7 +103,7 @@ namespace unlockall
 	public:
 		void post_unpack() override
 		{
-			utils::hook::jump(0x1437F6ED0_g, liveinventory_getitemquantity);
+			utilities::hook::jump(0x1437F6ED0_g, liveinventory_getitemquantity);
 		}
 	};
 }

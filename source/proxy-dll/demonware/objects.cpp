@@ -4,10 +4,10 @@
 #include "protobuf_helper.hpp"
 
 #include "resource.hpp"
-#include <utils/nt.hpp>
-#include <utils/io.hpp>
-#include <utils/string.hpp>
-#include <utils/cryptography.hpp>
+#include <utilities/nt.hpp>
+#include <utilities/io.hpp>
+#include <utilities/string.hpp>
+#include <utilities/cryptography.hpp>
 #include <component/platform.hpp>
 
 #define PUBLISHER_OBJECTS_ENUMERATE_LPC_DIR
@@ -30,11 +30,11 @@ namespace demonware
 	std::string get_publisher_file_checksum(std::string file)
 	{
 		std::string file_data;
-		if (!utils::io::read_file(file, &file_data)) return "";
+		if (!utilities::io::read_file(file, &file_data)) return "";
 
-		std::string checksum_md5 = utils::cryptography::md5::compute(file_data);
+		std::string checksum_md5 = utilities::cryptography::md5::compute(file_data);
 
-		return utils::cryptography::base64::encode(checksum_md5);
+		return utilities::cryptography::base64::encode(checksum_md5);
 	}
 
 	std::vector<objectMetadata> get_publisher_objects_list(const std::string& category)
@@ -42,24 +42,24 @@ namespace demonware
 		std::vector<objectMetadata> result;
 
 #ifdef PUBLISHER_OBJECTS_ENUMERATE_LPC_DIR
-		std::vector<std::string> files = utils::io::list_files("LPC");
+		std::vector<std::string> files = utilities::io::list_files("LPC");
 
 		for (std::string file : files)
 		{
-			if (!utils::string::ends_with(file, ".ff")) continue;
+			if (!utilities::string::ends_with(file, ".ff")) continue;
 
 			int64_t timestamp = static_cast<int64_t>(time(nullptr));
-			result.push_back({ "treyarch", utils::io::file_name(file), get_publisher_file_checksum(file), utils::io::file_size(file), timestamp, timestamp, "" });
+			result.push_back({ "treyarch", utilities::io::file_name(file), get_publisher_file_checksum(file), utilities::io::file_size(file), timestamp, timestamp, "" });
 		}
 #else // PUBLISHER_OBJECTS_ENUMERATE_CSV_LIST
-		const auto objects_list_csv = utils::nt::load_resource(DW_PUBLISHER_OBJECTS_LIST);
-		std::vector<std::string> items = utils::string::split(objects_list_csv, "\r\n"); // WTF!?
+		const auto objects_list_csv = utilities::nt::load_resource(DW_PUBLISHER_OBJECTS_LIST);
+		std::vector<std::string> items = utilities::string::split(objects_list_csv, "\r\n"); // WTF!?
 
 		for (std::string item : items)
 		{
-			std::string checksum = utils::cryptography::base64::encode(HexStringToBinaryString(utils::string::split(item, ',')[2]));
-			std::string name = utils::string::split(item, ',')[0];
-			uint64_t length = std::stoull(utils::string::split(item, ',')[1]);
+			std::string checksum = utilities::cryptography::base64::encode(HexStringToBinaryString(utilities::string::split(item, ',')[2]));
+			std::string name = utilities::string::split(item, ',')[0];
+			uint64_t length = std::stoull(utilities::string::split(item, ',')[1]);
 
 			int64_t timestamp = static_cast<int64_t>(time(nullptr));
 			result.push_back({ "treyarch", name, checksum, length, timestamp, timestamp, "" });
@@ -159,17 +159,17 @@ namespace demonware
 	std::string get_user_file_checksum(std::string file_path)
 	{
 		std::string file_data;
-		if (!utils::io::read_file(file_path, &file_data)) return "";
+		if (!utilities::io::read_file(file_path, &file_data)) return "";
 
-		return std::to_string(utils::cryptography::xxh32::compute(file_data));
+		return std::to_string(utilities::cryptography::xxh32::compute(file_data));
 	}
 
 	std::string get_user_file_content(std::string file_path)
 	{
 		std::string file_data;
-		if (!utils::io::read_file(file_path, &file_data)) return "";
+		if (!utilities::io::read_file(file_path, &file_data)) return "";
 
-		return utils::cryptography::base64::encode(file_data);
+		return utilities::cryptography::base64::encode(file_data);
 	}
 
 	std::string deliver_user_objects_vectorized_json(std::vector<objectMetadata> requested_items)
@@ -294,7 +294,7 @@ namespace demonware
 		{
 			std::string file_path = get_user_file_path(file.name);
 			int64_t timestamp = static_cast<int64_t>(time(nullptr));
-			files_metadata_list.push_back({ file.owner, file.name, get_user_file_checksum(file_path), utils::io::file_size(file_path), timestamp, timestamp, get_user_file_content(file_path) });
+			files_metadata_list.push_back({ file.owner, file.name, get_user_file_checksum(file_path), utilities::io::file_size(file_path), timestamp, timestamp, get_user_file_content(file_path) });
 		}
 
 		return deliver_user_objects_vectorized_json(files_metadata_list);
@@ -318,9 +318,9 @@ namespace demonware
 
 		std::string userdata_directory = platform::get_userdata_directory();
 
-		if (utils::io::directory_exists(userdata_directory))
+		if (utilities::io::directory_exists(userdata_directory))
 		{
-			std::vector<std::string> user_objects = utils::io::list_files(userdata_directory);
+			std::vector<std::string> user_objects = utilities::io::list_files(userdata_directory);
 
 			for (std::string object : user_objects)
 			{
@@ -336,7 +336,7 @@ namespace demonware
 				json_writer.Uint(0);
 
 				json_writer.Key("name");
-				json_writer.String(utils::io::file_name(object));
+				json_writer.String(utilities::io::file_name(object));
 
 				json_writer.Key("checksum");
 				json_writer.String(get_user_file_checksum(object));
@@ -354,7 +354,7 @@ namespace demonware
 				json_writer.Null();
 
 				json_writer.Key("contentLength");
-				json_writer.Uint64(utils::io::file_size(object));
+				json_writer.Uint64(utilities::io::file_size(object));
 
 				json_writer.Key("context");
 				json_writer.String("t8-bnet");
@@ -404,9 +404,9 @@ namespace demonware
 		std::string userdata_directory = platform::get_userdata_directory();
 
 		int files_count = 0;
-		if (utils::io::directory_exists(userdata_directory))
+		if (utilities::io::directory_exists(userdata_directory))
 		{
-			files_count = static_cast<int32_t>(utils::io::list_files(userdata_directory).size());
+			files_count = static_cast<int32_t>(utilities::io::list_files(userdata_directory).size());
 		}
 
 
@@ -467,7 +467,7 @@ namespace demonware
 		json_writer.Null();
 
 		json_writer.Key("contentLength");
-		json_writer.Uint64(utils::io::file_size(file_path));
+		json_writer.Uint64(utilities::io::file_size(file_path));
 
 		json_writer.Key("context");
 		json_writer.String("t8-bnet");
@@ -599,7 +599,7 @@ namespace demonware
 		{
 			std::string file_path = get_user_file_path(file);
 			int64_t timestamp = static_cast<int64_t>(time(nullptr));
-			files_metadata_list.push_back({ std::format("bnet-{}", platform::bnet_get_userid()), file, get_user_file_checksum(file_path), utils::io::file_size(file_path), timestamp, timestamp, get_user_file_content(file_path) });
+			files_metadata_list.push_back({ std::format("bnet-{}", platform::bnet_get_userid()), file, get_user_file_checksum(file_path), utilities::io::file_size(file_path), timestamp, timestamp, get_user_file_content(file_path) });
 		}
 
 		return construct_vectorized_upload_list_json(files_metadata_list);
@@ -609,7 +609,7 @@ namespace demonware
 	{
 		bdProtobufHelper header_1st;
 		header_1st.writeString(1, "Content-Length", 16);
-		header_1st.writeString(2, utils::string::va("%u", payload.length()), 8);
+		header_1st.writeString(2, utilities::string::va("%u", payload.length()), 8);
 
 		bdProtobufHelper header_2nd;
 		header_2nd.writeString(1, "Authorization", 16);

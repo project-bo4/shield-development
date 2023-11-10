@@ -18,10 +18,58 @@ namespace demonware
 		}
 	};
 
+	class bdStringResult final : public bdTaskResult
+	{
+	public:
+		std::string content = "";
+
+		void serialize(byte_buffer* buffer) override
+		{
+			buffer->write_string(this->content);
+		}
+
+		void deserialize(byte_buffer* buffer) override
+		{
+			buffer->read_string(&this->content);
+		}
+	};
+
+	class bdUInt64Result final : public bdTaskResult
+	{
+	public:
+		uint64_t value = 0;
+
+		void serialize(byte_buffer* buffer) override
+		{
+			buffer->write_uint64(this->value);
+		}
+
+		void deserialize(byte_buffer* buffer) override
+		{
+			buffer->read_uint64(&this->value);
+		}
+	};
+	
+	class bdBoolResult final : public bdTaskResult
+	{
+	public:
+		bool value = false;
+
+		void serialize(byte_buffer* buffer) override
+		{
+			buffer->write_bool(this->value);
+		}
+
+		void deserialize(byte_buffer* buffer) override
+		{
+			buffer->read_bool(&this->value);
+		}
+	};
+
 	class bdTimeStamp final : public bdTaskResult
 	{
 	public:
-		uint32_t unix_time;
+		uint32_t unix_time = 0;
 
 		void serialize(byte_buffer* buffer) override
 		{
@@ -37,14 +85,14 @@ namespace demonware
 	class bdDMLInfo : public bdTaskResult
 	{
 	public:
-		std::string country_code; // Char [3]
-		std::string country; // Char [65]
-		std::string region; // Char [65]
-		std::string city; // Char [129]
-		float latitude;
-		float longitude;
-		uint32_t asn; // Autonomous System Number.
-		std::string timezone;
+		std::string country_code = ""; // Char [3]
+		std::string country = ""; // Char [65]
+		std::string region = ""; // Char [65]
+		std::string city = ""; // Char [129]
+		float latitude = 0.0f;
+		float longitude = 0;
+		uint32_t asn = 0; // Autonomous System Number.
+		std::string timezone = "";
 
 		void serialize(byte_buffer* buffer) override
 		{
@@ -74,11 +122,11 @@ namespace demonware
 	class bdDMLHierarchicalInfo final : public bdDMLInfo
 	{
 	public:
-		uint32_t m_tier0;
-		uint32_t m_tier1;
-		uint32_t m_tier2;
-		uint32_t m_tier3;
-		uint32_t m_confidence;
+		uint32_t m_tier0 = 0;
+		uint32_t m_tier1 = 0;
+		uint32_t m_tier2 = 0;
+		uint32_t m_tier3 = 0;
+		uint32_t m_confidence = 0;
 
 		void serialize(byte_buffer* buffer) override
 		{
@@ -103,74 +151,12 @@ namespace demonware
 		}
 	};
 
-	class bdStructedDataBuffer final : public bdTaskResult
-	{
-	public:
-		std::string structed_data_protobuffer;
-
-		void serialize(byte_buffer* buffer) override
-		{
-			buffer->write_struct(this->structed_data_protobuffer);
-		}
-
-		void deserialize(byte_buffer* buffer) override
-		{
-			buffer->read_struct(&this->structed_data_protobuffer);
-		}
-	};
-
-	class bdMarketplaceInventory final : public bdTaskResult
-	{
-	public:
-		uint64_t m_userID;
-		std::string m_accountType;
-		uint32_t m_itemId;
-		uint32_t m_itemQuantity;
-		uint32_t m_itemXp;
-		std::string m_itemData;
-		uint32_t m_expireDateTime;
-		int64_t m_expiryDuration;
-		uint16_t m_collisionField;
-		uint32_t m_modDateTime;
-		uint32_t m_customSourceType;
-
-		void serialize(byte_buffer* buffer) override
-		{
-			buffer->write_uint64(this->m_userID);
-			buffer->write_string(this->m_accountType);
-			buffer->write_uint32(this->m_itemId);
-			buffer->write_uint32(this->m_itemQuantity);
-			buffer->write_uint32(this->m_itemXp);
-			buffer->write_blob(this->m_itemData);
-			buffer->write_uint32(this->m_expireDateTime);
-			buffer->write_int64(this->m_expiryDuration);
-			buffer->write_uint16(this->m_collisionField);
-			buffer->write_uint32(this->m_modDateTime);
-			buffer->write_uint32(this->m_customSourceType);
-		}
-
-		void deserialize(byte_buffer* buffer) override
-		{
-			buffer->read_uint64(&this->m_userID);
-			buffer->read_string(&this->m_accountType);
-			buffer->read_uint32(&this->m_itemId);
-			buffer->read_uint32(&this->m_itemQuantity);
-			buffer->read_uint32(&this->m_itemXp);
-			buffer->read_blob(&this->m_itemData);
-			buffer->read_uint32(&this->m_expireDateTime);
-			buffer->read_int64(&this->m_expiryDuration);
-			buffer->read_uint16(&this->m_collisionField);
-			buffer->read_uint32(&this->m_modDateTime);
-			buffer->read_uint32(&this->m_customSourceType);
-		}
-	};
-
 	class bdPublicProfileInfo final : public bdTaskResult
 	{
 	public:
-		uint64_t m_entityID;
-		int32_t m_VERSION;
-		std::string m_ddl;
+		uint64_t m_entityID = 0;
+		int32_t m_VERSION = 0;
+		std::string m_ddl = "";
 
 		void serialize(byte_buffer* buffer) override
 		{
@@ -184,6 +170,86 @@ namespace demonware
 			buffer->read_uint64(&this->m_entityID);
 			buffer->read_int32(&this->m_VERSION);
 			buffer->read_blob(&this->m_ddl);
+		}
+	};
+	
+	class bdFileMetaData final : public bdTaskResult
+	{
+	public:
+		uint64_t m_fileID = 0;
+		uint32_t m_createTime = 0;
+		uint32_t m_modifedTime = 0;
+		uint32_t m_fileSize = 0;
+		uint64_t m_ownerID = 0;
+		std::string m_ownerName = "";
+		uint16_t m_fileSlot = 0;
+		std::string m_fileName = "";
+		std::string m_url = "";
+		uint16_t m_category = 0;
+		std::string m_metaData = "";
+		uint32_t m_summaryFileSize = 0;
+		std::map<uint64_t, uint64_t> m_tags;
+		uint32_t m_numCopiesMade = 0;
+		uint64_t m_originID = 0;
+
+		void serialize(byte_buffer* buffer) override
+		{
+			buffer->write_uint64(this->m_fileID);
+			buffer->write_uint32(this->m_createTime);
+			buffer->write_uint32(this->m_modifedTime);
+			buffer->write_uint32(this->m_fileSize);
+			buffer->write_uint64(this->m_ownerID);
+			buffer->write_string(this->m_ownerName);
+			buffer->write_uint16(this->m_fileSlot);
+			buffer->write_string(this->m_fileName);
+			buffer->write_string(this->m_url);
+			buffer->write_uint16(this->m_category);
+			buffer->write_blob(this->m_metaData);
+			buffer->write_uint32(this->m_summaryFileSize);
+			buffer->write_array(10, m_tags);
+			buffer->write_uint32(this->m_numCopiesMade);
+			buffer->write_uint64(this->m_originID);
+		}
+	};
+
+	class bdURL final : public bdTaskResult
+	{
+	public:
+		std::string m_url = "";
+		uint16_t m_serverType = 0;
+		std::string m_serverIndex = "";
+		uint64_t m_fileID = 0;
+
+		void serialize(byte_buffer* buffer) override
+		{
+			buffer->write_string(this->m_url);
+			buffer->write_uint16(this->m_serverType);
+			buffer->write_string(this->m_serverIndex);
+			buffer->write_uint64(this->m_fileID);
+		}
+
+		void deserialize(byte_buffer* buffer) override
+		{
+			buffer->read_string(&this->m_url);
+			buffer->read_uint16(&this->m_serverType);
+			buffer->read_string(&this->m_serverIndex);
+			buffer->read_uint64(&this->m_fileID);
+		}
+	};
+		
+	class bdStructedDataBuffer final : public bdTaskResult
+	{
+	public:
+		std::string structed_data_protobuffer = "";
+
+		void serialize(byte_buffer* buffer) override
+		{
+			buffer->write_struct(this->structed_data_protobuffer);
+		}
+
+		void deserialize(byte_buffer* buffer) override
+		{
+			buffer->read_struct(&this->structed_data_protobuffer);
 		}
 	};
 }

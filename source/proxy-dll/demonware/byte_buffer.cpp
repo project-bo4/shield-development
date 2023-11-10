@@ -169,24 +169,28 @@ namespace demonware
 		return type == expected;
 	}
 
-	bool byte_buffer::read_array_header(const unsigned char expected, unsigned int* element_count,
-	                                    unsigned int* element_size)
+	bool byte_buffer::read_array_header(const unsigned char expected
+		, unsigned int* element_count, unsigned int* element_size)
 	{
 		if (element_count) *element_count = 0;
 		if (element_size) *element_size = 0;
 
+		const auto using_types = this->is_using_data_types();
+		this->set_use_data_types(true);
+
 		if (!this->read_data_type(expected + 100)) return false;
 
-		uint32_t array_size, el_count;
+		uint32_t array_size, num_elements;
 		if (!this->read_uint32(&array_size)) return false;
 
 		this->set_use_data_types(false);
-		this->read_uint32(&el_count);
+		if (!this->read_uint32(&num_elements)) return false;
 		this->set_use_data_types(true);
 
-		if (element_count) *element_count = el_count;
-		if (element_size) *element_size = array_size / el_count;
+		if (element_count) *element_count = num_elements;
+		if (element_size) *element_size = array_size / num_elements;
 
+		this->set_use_data_types(using_types);
 		return true;
 	}
 
@@ -293,8 +297,8 @@ namespace demonware
 		return this->write(length, data);
 	}
 
-	bool byte_buffer::write_array_header(const unsigned char type, const unsigned int element_count,
-	                                     const unsigned int element_size)
+	bool byte_buffer::write_array_header(const unsigned char type,
+		const unsigned int element_count, const unsigned int element_size)
 	{
 		const auto using_types = this->is_using_data_types();
 		this->set_use_data_types(false);

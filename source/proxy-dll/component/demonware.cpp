@@ -1,9 +1,9 @@
 #include <std_include.hpp>
 #include "loader/component_loader.hpp"
 
-#include <utils/io.hpp>
-#include <utils/hook.hpp>
-#include <utils/thread.hpp>
+#include <utilities/io.hpp>
+#include <utilities/hook.hpp>
+#include <utilities/thread.hpp>
 
 #include "demonware/servers/lobby_server.hpp"
 #include "demonware/servers/auth3_server.hpp"
@@ -31,8 +31,8 @@ namespace demonware
 	{
 		std::atomic_bool exit_server{ false };
 		std::thread server_thread{};
-		utils::concurrency::container<std::unordered_map<SOCKET, bool>> blocking_sockets{};
-		utils::concurrency::container<std::unordered_map<SOCKET, tcp_server*>> socket_map{};
+		utilities::concurrency::container<std::unordered_map<SOCKET, bool>> blocking_sockets{};
+		utilities::concurrency::container<std::unordered_map<SOCKET, tcp_server*>> socket_map{};
 		server_registry<tcp_server> tcp_servers{};
 		server_registry<udp_server> udp_servers{};
 		std::unordered_map<void*, void*> original_imports{};
@@ -153,8 +153,8 @@ namespace demonware
 					return getaddrinfo(name, service, hints, res);
 				}
 
-				const auto address = utils::memory::get_allocator()->allocate<sockaddr>();
-				const auto ai = utils::memory::get_allocator()->allocate<addrinfo>();
+				const auto address = utilities::memory::get_allocator()->allocate<sockaddr>();
+				const auto ai = utilities::memory::get_allocator()->allocate<addrinfo>();
 
 				auto in_addr = reinterpret_cast<sockaddr_in*>(address);
 				in_addr->sin_addr.s_addr = server->get_address();
@@ -176,13 +176,13 @@ namespace demonware
 
 			void freeaddrinfo_stub(addrinfo* ai)
 			{
-				if (!utils::memory::get_allocator()->find(ai))
+				if (!utilities::memory::get_allocator()->find(ai))
 				{
 					return freeaddrinfo(ai);
 				}
 
-				utils::memory::get_allocator()->free(ai->ai_addr);
-				utils::memory::get_allocator()->free(ai);
+				utilities::memory::get_allocator()->free(ai->ai_addr);
+				utilities::memory::get_allocator()->free(ai);
 			}
 
 			int getpeername_stub(const SOCKET s, sockaddr* addr, socklen_t* addrlen)
@@ -440,11 +440,11 @@ namespace demonware
 
 		void register_hook(const std::string& process, void* stub)
 		{
-			const utils::nt::library game_module{};
+			const utilities::nt::library game_module{};
 
 			std::optional<std::pair<void*, void*>> result{};
-			if (!result) result = utils::hook::iat(game_module, "wsock32.dll", process, stub);
-			if (!result) result = utils::hook::iat(game_module, "WS2_32.dll", process, stub);
+			if (!result) result = utilities::hook::iat(game_module, "wsock32.dll", process, stub);
+			if (!result) result = utilities::hook::iat(game_module, "WS2_32.dll", process, stub);
 
 			if (!result)
 			{
@@ -456,7 +456,7 @@ namespace demonware
 
 		void check_lpc_files()
 		{
-			if (!utils::io::file_exists("LPC/.manifest") || !utils::io::file_exists("LPC/core_ffotd_tu23_639_cf92ecf4a75d3f79.ff") || !utils::io::file_exists("LPC/core_playlists_tu23_639_cf92ecf4a75d3f79.ff"))
+			if (!utilities::io::file_exists("LPC/.manifest") || !utilities::io::file_exists("LPC/core_ffotd_tu23_639_cf92ecf4a75d3f79.ff") || !utilities::io::file_exists("LPC/core_playlists_tu23_639_cf92ecf4a75d3f79.ff"))
 			{
 				MessageBoxA(nullptr, "some required LPC files seems to be missing. You need to get and place them manually since this emulator doesnt host and provide those files; read instructions in github documentation for more info.",
 					"LPC Files Missing", MB_ICONERROR);
@@ -500,18 +500,18 @@ namespace demonware
 
 		void post_unpack() override
 		{
-			server_thread = utils::thread::create_named_thread("Demonware", server_main);
+			server_thread = utilities::thread::create_named_thread("Demonware", server_main);
 
-			utils::hook::set<uint8_t>(0x144508469_g, 0x0); // CURLOPT_SSL_VERIFYPEER
-			utils::hook::set<uint8_t>(0x144508455_g, 0xAF); // CURLOPT_SSL_VERIFYHOST
-			utils::hook::set<uint8_t>(0x144B28D98_g, 0x0); // HTTPS -> HTTP
+			utilities::hook::set<uint8_t>(0x144508469_g, 0x0); // CURLOPT_SSL_VERIFYPEER
+			utilities::hook::set<uint8_t>(0x144508455_g, 0xAF); // CURLOPT_SSL_VERIFYHOST
+			utilities::hook::set<uint8_t>(0x144B28D98_g, 0x0); // HTTPS -> HTTP
 
-			utils::hook::copy_string(0x144A27C70_g, "http://prod.umbrella.demonware.net");
-			utils::hook::copy_string(0x144A2BAA0_g, "http://prod.uno.demonware.net/v1.0");
-			utils::hook::copy_string(0x144A29CB0_g, "http://%s:%d/auth/");
+			utilities::hook::copy_string(0x144A27C70_g, "http://prod.umbrella.demonware.net");
+			utilities::hook::copy_string(0x144A2BAA0_g, "http://prod.uno.demonware.net/v1.0");
+			utilities::hook::copy_string(0x144A29CB0_g, "http://%s:%d/auth/");
 			
-			utils::hook::set(0x142DD0E10_g, 0xC301B0); // Live_Qos_Finished
-			utils::hook::set(0x1438C2C70_g, 0xC301B0); // Live_Contracts? related to bdUNK125
+			utilities::hook::set(0x142DD0E10_g, 0xC301B0); // Live_Qos_Finished
+			utilities::hook::set(0x1438C2C70_g, 0xC301B0); // Live_Contracts? related to bdUNK125
 		}
 
 		void pre_destroy() override
@@ -524,7 +524,7 @@ namespace demonware
 
 			for (const auto& import : original_imports)
 			{
-				utils::hook::set(import.first, import.second);
+				utilities::hook::set(import.first, import.second);
 			}
 		}
 	};

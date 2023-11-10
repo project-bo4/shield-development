@@ -4,7 +4,7 @@
 #include "../services.hpp"
 #include "../keys.hpp"
 
-#include <utils/cryptography.hpp>
+#include <utilities/cryptography.hpp>
 
 namespace demonware
 {
@@ -127,7 +127,7 @@ namespace demonware
 						char hash[8];
 						std::memcpy(hash, &(enc.data()[enc.size() - 8]), 8);
 
-						std::string dec = utils::cryptography::aes::decrypt(
+						std::string dec = utilities::cryptography::aes::decrypt(
 							std::string(enc.data(), enc.size() - 8), std::string(seed, 16),
 							demonware::get_decrypt_key());
 
@@ -168,7 +168,7 @@ namespace demonware
 		}
 		else
 		{
-			logger::write(logger::LOG_TYPE_DEBUG, "[DW]: [lobby]: missing service '%s'", utils::string::va("%d", id));
+			logger::write(logger::LOG_TYPE_DEBUG, "[DW]: [lobby]: missing service '%s'", utilities::string::va("%d", id));
 
 			// return no error
 			byte_buffer buffer(data);

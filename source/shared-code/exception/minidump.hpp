@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../utils/nt.hpp"
+#include "../utilities/nt.hpp"
 
 namespace exception
 {

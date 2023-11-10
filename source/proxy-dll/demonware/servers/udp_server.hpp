@@ -1,7 +1,7 @@
 #pragma once
 
 #include "base_server.hpp"
-#include <utils/concurrency.hpp>
+#include <utilities/concurrency.hpp>
 
 namespace demonware
 {
@@ -56,7 +56,7 @@ namespace demonware
 		using out_queue = std::queue<out_packet>;
 		using socket_queue_map = std::unordered_map<SOCKET, out_queue>;
 
-		utils::concurrency::container<in_queue> in_queue_;
-		utils::concurrency::container<socket_queue_map> out_queue_;
+		utilities::concurrency::container<in_queue> in_queue_;
+		utilities::concurrency::container<socket_queue_map> out_queue_;
 	};
 }

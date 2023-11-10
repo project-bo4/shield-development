@@ -4,30 +4,30 @@
 
 #include "resource.hpp"
 
-#include <utils/nt.hpp>
-#include <utils/image.hpp>
+#include <utilities/nt.hpp>
+#include <utilities/image.hpp>
 
 namespace splash
 {
 	namespace
 	{
 		HWND window{};
-		utils::image::object image{};
+		utilities::image::object image{};
 		std::thread window_thread{};
 
-		utils::image::object load_splash_image()
+		utilities::image::object load_splash_image()
 		{
-			//const auto self = utils::nt::library::get_by_address(load_splash_image);
+			//const auto self = utilities::nt::library::get_by_address(load_splash_image);
 			//return LoadImageA(self, MAKEINTRESOURCE(IMAGE_SPLASH), IMAGE_BITMAP, 0, 0, LR_DEFAULTCOLOR);
 
-			const auto res = utils::nt::load_resource(IMAGE_SPLASH);
-			const auto img = utils::image::load_image(res);
-			return utils::image::create_bitmap(img);
+			const auto res = utilities::nt::load_resource(IMAGE_SPLASH);
+			const auto img = utilities::image::load_image(res);
+			return utilities::image::create_bitmap(img);
 		}
 
 		void enable_dpi_awareness()
 		{
-			const utils::nt::library user32{ "user32.dll" };
+			const utilities::nt::library user32{ "user32.dll" };
 			const auto set_dpi = user32
 				? user32.get_proc<BOOL(WINAPI*)(DPI_AWARENESS_CONTEXT)>(
 					"SetProcessDpiAwarenessContext")
@@ -63,7 +63,7 @@ namespace splash
 		{
 			WNDCLASSA wnd_class;
 
-			const auto self = utils::nt::library::get_by_address(load_splash_image);
+			const auto self = utilities::nt::library::get_by_address(load_splash_image);
 
 			wnd_class.style = CS_DROPSHADOW;
 			wnd_class.cbClsExtra = 0;
@@ -161,7 +161,7 @@ namespace splash
 			}
 
 			window = nullptr;
-			UnregisterClassA("Black Ops 4 Splash Screen", utils::nt::library{});
+			UnregisterClassA("Black Ops 4 Splash Screen", utilities::nt::library{});
 		}
 	}
 

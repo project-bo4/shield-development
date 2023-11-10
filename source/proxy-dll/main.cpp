@@ -1,11 +1,11 @@
 #include <std_include.hpp>
 
 #include "loader/component_loader.hpp"
-#include <utils/io.hpp>
-#include <utils/nt.hpp>
-#include <utils/hook.hpp>
-#include <utils/string.hpp>
-#include <utils/finally.hpp>
+#include <utilities/io.hpp>
+#include <utilities/nt.hpp>
+#include <utilities/hook.hpp>
+#include <utilities/string.hpp>
+#include <utilities/finally.hpp>
 
 namespace
 {
@@ -17,7 +17,7 @@ namespace
 
 	std::pair<void**, void*> patch_import(const std::string& lib, const std::string& func, void* function)
 	{
-		static const utils::nt::library game{};
+		static const utilities::nt::library game{};
 
 		const auto game_entry = game.get_iat_entry(lib, func);
 		if (!game_entry)
@@ -26,11 +26,11 @@ namespace
 		}
 
 #ifdef DEBUG
-		logger::write(logger::LOG_TYPE_DEBUG, "[ IAT-HOOKS ]: Diverted %s::%s from %p to %p", utils::string::to_upper(lib).c_str(), func.c_str(), game_entry, function);
+		logger::write(logger::LOG_TYPE_DEBUG, "[ IAT-HOOKS ]: Diverted %s::%s from %p to %p", utilities::string::to_upper(lib).c_str(), func.c_str(), game_entry, function);
 #endif // DEBUG
 
 		const auto original_import = game_entry;
-		utils::hook::set(game_entry, function);
+		utilities::hook::set(game_entry, function);
 		return { game_entry, original_import };
 	}
 
@@ -49,17 +49,17 @@ namespace
 	{
 		patch_import("user32.dll", "GetSystemMetrics", get_system_metrics);
 
-		//utils::hook::set(utils::nt::library{}.get_iat_entry("kernel32.dll", "ExitProcess"), exit_hook);
+		//utilities::hook::set(utilities::nt::library{}.get_iat_entry("kernel32.dll", "ExitProcess"), exit_hook);
 	}
 
 	void remove_crash_file()
 	{
-		const utils::nt::library game{};
+		const utilities::nt::library game{};
 		const auto game_file = game.get_path();
 		auto game_path = std::filesystem::path(game_file);
 		game_path.replace_extension(".start");
 
-		utils::io::remove_file(game_path.generic_string());
+		utilities::io::remove_file(game_path.generic_string());
 	}
 
 	bool run()
@@ -68,7 +68,7 @@ namespace
 
 		{
 			auto premature_shutdown = true;
-			const auto _ = utils::finally([&premature_shutdown]()
+			const auto _ = utilities::finally([&premature_shutdown]()
 				{
 					if (premature_shutdown)
 					{
@@ -107,14 +107,14 @@ namespace
 			: source_(source)
 		{
 			memcpy(this->data_, source, sizeof(this->data_));
-			utils::hook::jump(this->source_, target, true, true);
+			utilities::hook::jump(this->source_, target, true, true);
 		}
 
 		~patch()
 		{
 			if (source_)
 			{
-				utils::hook::copy(this->source_, this->data_, sizeof(this->data_));
+				utilities::hook::copy(this->source_, this->data_, sizeof(this->data_));
 			}
 		}
 
@@ -148,13 +148,13 @@ namespace
 
 	uint8_t* get_entry_point()
 	{
-		const utils::nt::library game{};
+		const utilities::nt::library game{};
 		return game.get_ptr() + game.get_optional_header()->AddressOfEntryPoint;
 	}
 
 	std::vector<uint8_t*> get_tls_callbacks()
 	{
-		const utils::nt::library game{};
+		const utilities::nt::library game{};
 		const auto& entry = game.get_optional_header()->DataDirectory[IMAGE_DIRECTORY_ENTRY_TLS];
 		if (!entry.VirtualAddress || !entry.Size)
 		{
@@ -222,7 +222,7 @@ HRESULT D3D11CreateDevice(void* adapter, const uint64_t driver_type,
 		char dir[MAX_PATH]{ 0 };
 		GetSystemDirectoryA(dir, sizeof(dir));
 
-		const auto d3d11 = utils::nt::library::load(dir + "/d3d11.dll"s);
+		const auto d3d11 = utilities::nt::library::load(dir + "/d3d11.dll"s);
 		return d3d11.get_proc<decltype(&D3D11CreateDevice)>("D3D11CreateDevice");
 	}();
 

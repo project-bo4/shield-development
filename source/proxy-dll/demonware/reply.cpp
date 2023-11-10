@@ -3,7 +3,7 @@
 #include "reply.hpp"
 #include "servers/service_server.hpp"
 
-#include <utils/cryptography.hpp>
+#include <utilities/cryptography.hpp>
 
 namespace demonware
 {
@@ -41,7 +41,7 @@ namespace demonware
 		std::string seed("\x5E\xED\x5E\xED\x5E\xED\x5E\xED\x5E\xED\x5E\xED\x5E\xED\x5E\xED", 16);
 
 		// encrypt
-		const auto enc_data = utils::cryptography::aes::encrypt(aligned_data, seed, demonware::get_encrypt_key());
+		const auto enc_data = utilities::cryptography::aes::encrypt(aligned_data, seed, demonware::get_encrypt_key());
 
 		// header : encrypted service data : hash
 		static auto msg_count = 0;
@@ -58,7 +58,7 @@ namespace demonware
 		response.write(enc_data);
 
 		// hash entire packet and append end
-		auto hash_data = utils::cryptography::hmac_sha1::compute(response.get_buffer(), demonware::get_hmac_key());
+		auto hash_data = utilities::cryptography::hmac_sha1::compute(response.get_buffer(), demonware::get_hmac_key());
 		hash_data.resize(8);
 		response.write(8, hash_data.data());
 

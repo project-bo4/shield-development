@@ -1,7 +1,7 @@
 #include <std_include.hpp>
 #include "../services.hpp"
 
-#include <utils/io.hpp>
+#include <utilities/io.hpp>
 #include <component/platform.hpp>
 
 namespace demonware
@@ -27,7 +27,7 @@ namespace demonware
 		result->m_entityID = entity_id;
 		result->m_VERSION = 4;
 
-		if (utils::io::read_file(std::format("{}/profileInfo_{}", platform::get_userdata_directory(), entity_id), &result->m_ddl))
+		if (utilities::io::read_file(std::format("{}/profileInfo_{}", platform::get_userdata_directory(), entity_id), &result->m_ddl))
 		{
 			auto reply = server->create_reply(this->task_id());
 			reply->add(result);
@@ -46,7 +46,7 @@ namespace demonware
 		buffer->read_int32(&version);
 		buffer->read_blob(&ddl);
 
-		utils::io::write_file(std::format("{}/profileInfo_{}", platform::get_userdata_directory(), platform::bnet_get_userid()), ddl);
+		utilities::io::write_file(std::format("{}/profileInfo_{}", platform::get_userdata_directory(), platform::bnet_get_userid()), ddl);
 
 		auto reply = server->create_reply(this->task_id());
 		reply->send();

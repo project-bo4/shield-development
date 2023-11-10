@@ -3,11 +3,11 @@
 #include "definitions/game.hpp"
 #include "loader/component_loader.hpp"
 
-#include <utils/hook.hpp>
-#include <utils/string.hpp>
-#include <utils/identity.hpp>
-#include <utils/json_config.hpp>
-#include <utils/cryptography.hpp>
+#include <utilities/hook.hpp>
+#include <utilities/string.hpp>
+#include <utilities/identity.hpp>
+#include <utilities/json_config.hpp>
+#include <utilities/cryptography.hpp>
 #include <WinReg.hpp>
 
 namespace platform
@@ -17,8 +17,8 @@ namespace platform
 		static uint64_t userid = 0;
 		if (!userid)
 		{
-			uint32_t default_xuid = utils::cryptography::xxh32::compute(utils::identity::get_sys_username());
-			userid = utils::json_config::ReadUnsignedInteger64("identity", "xuid", default_xuid);
+			uint32_t default_xuid = utilities::cryptography::xxh32::compute(utilities::identity::get_sys_username());
+			userid = utilities::json_config::ReadUnsignedInteger64("identity", "xuid", default_xuid);
 		}
 
 		return userid;
@@ -29,8 +29,8 @@ namespace platform
 		static std::string username{};
 		if (username.empty())
 		{
-			std::string default_name = utils::identity::get_sys_username();
-			username = utils::json_config::ReadString("identity", "name", default_name);
+			std::string default_name = utilities::identity::get_sys_username();
+			username = utilities::json_config::ReadString("identity", "name", default_name);
 		}
 
 		return username.data();
@@ -43,7 +43,7 @@ namespace platform
 
 	namespace
 	{
-		utils::hook::detour PC_TextChat_Print_Hook;
+		utilities::hook::detour PC_TextChat_Print_Hook;
 		void PC_TextChat_Print_Stub(const char* text)
 		{
 #ifdef DEBUG
@@ -76,22 +76,22 @@ namespace platform
 
 		void post_unpack() override
 		{
-			utils::hook::set<uint16_t>(0x1423271D0_g, 0x01B0); // BattleNet_IsDisabled (patch to mov al,1)
-			utils::hook::set<uint32_t>(0x1423271E0_g, 0x90C301B0); // BattleNet_IsConnected (patch to mov al,1 retn)
+			utilities::hook::set<uint16_t>(0x1423271D0_g, 0x01B0); // BattleNet_IsDisabled (patch to mov al,1)
+			utilities::hook::set<uint32_t>(0x1423271E0_g, 0x90C301B0); // BattleNet_IsConnected (patch to mov al,1 retn)
 
-			utils::hook::set<uint8_t>(0x142325210_g, 0xC3); // patch#1 Annoying function crashing game; related to BattleNet (TODO : Needs Further Investigation)
-			utils::hook::set<uint8_t>(0x142307B40_g, 0xC3); // patch#2 Annoying function crashing game; related to BattleNet (TODO : Needs Further Investigation)
-			utils::hook::set<uint32_t>(0x143D08290_g, 0x90C301B0); // patch#3 BattleNet_IsModeAvailable? (patch to mov al,1 retn)
+			utilities::hook::set<uint8_t>(0x142325210_g, 0xC3); // patch#1 Annoying function crashing game; related to BattleNet (TODO : Needs Further Investigation)
+			utilities::hook::set<uint8_t>(0x142307B40_g, 0xC3); // patch#2 Annoying function crashing game; related to BattleNet (TODO : Needs Further Investigation)
+			utilities::hook::set<uint32_t>(0x143D08290_g, 0x90C301B0); // patch#3 BattleNet_IsModeAvailable? (patch to mov al,1 retn)
 
-			utils::hook::nop(0x1437DA454_g, 13); // begin cross-auth even without platform being initialized [LiveConnect_BeginCrossAuthPlatform]
-			utils::hook::set(0x1444D2D60_g, 0xC301B0); // Auth3 Response RSA signature check [bdAuth::validateResponseSignature]
-			utils::hook::set(0x1444E34C0_g, 0xC301B0); // Auth3 Response platform extended data check [bdAuthPC::processPlatformData]
+			utilities::hook::nop(0x1437DA454_g, 13); // begin cross-auth even without platform being initialized [LiveConnect_BeginCrossAuthPlatform]
+			utilities::hook::set(0x1444D2D60_g, 0xC301B0); // Auth3 Response RSA signature check [bdAuth::validateResponseSignature]
+			utilities::hook::set(0x1444E34C0_g, 0xC301B0); // Auth3 Response platform extended data check [bdAuthPC::processPlatformData]
 
-			utils::hook::nop(0x1438994E9_g, 22); // get live name even without platform being initialized [Live_UserSignedIn]
-			utils::hook::nop(0x1438C3476_g, 22); // get live xuid even without platform being initialized [LiveUser_UserGetXuid]
+			utilities::hook::nop(0x1438994E9_g, 22); // get live name even without platform being initialized [Live_UserSignedIn]
+			utilities::hook::nop(0x1438C3476_g, 22); // get live xuid even without platform being initialized [LiveUser_UserGetXuid]
 
-			utils::hook::jump(0x142325C70_g, bnet_get_username); // detour battlenet username
-			utils::hook::jump(0x142325CA0_g, bnet_get_userid); // detour battlenet userid
+			utilities::hook::jump(0x142325C70_g, bnet_get_username); // detour battlenet username
+			utilities::hook::jump(0x142325CA0_g, bnet_get_userid); // detour battlenet userid
 
 			//PC_TextChat_Print_Hook.create(0x1422D4A20_g, PC_TextChat_Print_Stub); // Disable useless system messages passed into chat box
 			

@@ -7,9 +7,9 @@
 #include "component/dvars.hpp"
 #include "component/scheduler.hpp"
 
-#include <utils/hook.hpp>
-#include <utils/string.hpp>
-#include <utils/concurrency.hpp>
+#include <utilities/hook.hpp>
+#include <utilities/string.hpp>
+#include <utilities/concurrency.hpp>
 
 #define R_DrawTextFont reinterpret_cast<void*>(game::sharedUiInfo->assets.bigFont)
 #define R_WhiteMaterial reinterpret_cast<void*>(game::sharedUiInfo->assets.whiteMaterial)
@@ -53,7 +53,7 @@ namespace game_console
 			bool output_visible{};
 			int display_line_offset{};
 			int total_line_count{};
-			utils::concurrency::container<output_queue, std::recursive_mutex> output{};
+			utilities::concurrency::container<output_queue, std::recursive_mutex> output{};
 		};
 
 		ingame_console con{};
@@ -186,7 +186,7 @@ namespace game_console
 
 			for (const auto& dvar : variables::dvars_record)
 			{
-				if (dvars::find_dvar(dvar.fnv1a) && utils::string::match(input, dvar.name) >= required_ratio)
+				if (dvars::find_dvar(dvar.fnv1a) && utilities::string::match(input, dvar.name) >= required_ratio)
 				{
 					suggestions.push_back(dvar);
 				}
@@ -204,7 +204,7 @@ namespace game_console
 
 			for (const auto& cmd : variables::commands_record)
 			{
-				if (utils::string::match(input, cmd.name) >= required_ratio)
+				if (utilities::string::match(input, cmd.name) >= required_ratio)
 				{
 					suggestions.push_back(cmd);
 				}
@@ -252,7 +252,7 @@ namespace game_console
 					if (matches.size() <= con.max_suggestions)
 					{
 						std::sort(matches.begin(), matches.end(), [&input](suggestion_t& lhs, suggestion_t& rhs) {
-								return utils::string::match(input, lhs.name) > utils::string::match(input, rhs.name);
+								return utilities::string::match(input, lhs.name) > utilities::string::match(input, rhs.name);
 							});
 					}
 
@@ -266,7 +266,7 @@ namespace game_console
 			if (matches.size() > con.max_suggestions)
 			{
 				draw_hint_box(1, con_inputHintBoxColor);
-				draw_hint_text(0, utils::string::va("%i matches (too many to show here)", matches.size()), con_inputDvarMatchColor);
+				draw_hint_text(0, utilities::string::va("%i matches (too many to show here)", matches.size()), con_inputDvarMatchColor);
 			}
 			else if (matches.size() == 1)
 			{
@@ -414,7 +414,7 @@ namespace game_console
 		va_end(ap);
 
 		const auto formatted = std::string(va_buffer);
-		const auto lines = utils::string::split(formatted, '\n');
+		const auto lines = utilities::string::split(formatted, '\n');
 
 		for (const auto& line : lines)
 		{
@@ -424,7 +424,7 @@ namespace game_console
 
 	void print(const std::string& data)
 	{
-		const auto lines = utils::string::split(data, '\n');
+		const auto lines = utilities::string::split(data, '\n');
 		for (const auto& line : lines)
 		{
 			print_internal(line);
@@ -476,7 +476,7 @@ namespace game_console
 
 			if (key == 'v' - 'a' + 1) // paste
 			{
-				const auto clipboard = utils::string::get_clipboard_data();
+				const auto clipboard = utilities::string::get_clipboard_data();
 				if (clipboard.empty())
 				{
 					return false;
@@ -646,7 +646,7 @@ namespace game_console
 
 				if (key == game::keyNum_t::K_ENTER)
 				{
-					//game::Cbuf_AddText(0, utils::string::va("%s \n", fixed_input.data()));
+					//game::Cbuf_AddText(0, utilities::string::va("%s \n", fixed_input.data()));
 
 					if (history_index != -1)
 					{
@@ -661,7 +661,7 @@ namespace game_console
 					history.push_front(con.buffer);
 
 					print("]%s\n", con.buffer);
-					game::Cbuf_AddText(0, utils::string::va("%s \n", fixed_input.data()));
+					game::Cbuf_AddText(0, utilities::string::va("%s \n", fixed_input.data()));
 
 					if (history.size() > 10)
 					{
@@ -678,7 +678,7 @@ namespace game_console
 		return true;
 	}
 
-	utils::hook::detour cl_key_event_hook;
+	utilities::hook::detour cl_key_event_hook;
 	void cl_key_event_stub(int localClientNum, int key, bool down, unsigned int time)
 	{
 		if (!game_console::console_key_event(localClientNum, key, down))
@@ -689,7 +689,7 @@ namespace game_console
 		cl_key_event_hook.invoke<void>(localClientNum, key, down, time);
 	}
 
-	utils::hook::detour cl_char_event_hook;
+	utilities::hook::detour cl_char_event_hook;
 	void cl_char_event_stub(const int localClientNum, const int key, bool isRepeated)
 	{
 		if (!game_console::console_char_event(localClientNum, key))

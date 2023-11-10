@@ -5,7 +5,7 @@
 #include "definitions/variables.hpp"
 #include "loader/component_loader.hpp"
 
-#include <utils/string.hpp>
+#include <utilities/string.hpp>
 
 namespace dvars
 {
@@ -25,22 +25,22 @@ namespace dvars
 			{
 				if (domain.vector.max == FLT_MAX)
 				{
-					return utils::string::va("Domain is any %iD vector", components);
+					return utilities::string::va("Domain is any %iD vector", components);
 				}
 				else
 				{
-					return utils::string::va("Domain is any %iD vector with components %g or smaller", components,
+					return utilities::string::va("Domain is any %iD vector with components %g or smaller", components,
 						domain.vector.max);
 				}
 			}
 			else if (domain.vector.max == FLT_MAX)
 			{
-				return utils::string::va("Domain is any %iD vector with components %g or bigger", components,
+				return utilities::string::va("Domain is any %iD vector with components %g or bigger", components,
 					domain.vector.min);
 			}
 			else
 			{
-				return utils::string::va("Domain is any %iD vector with components from %g to %g", components,
+				return utilities::string::va("Domain is any %iD vector with components from %g to %g", components,
 					domain.vector.min, domain.vector.max);
 			}
 		}
@@ -64,16 +64,16 @@ namespace dvars
 				}
 				else
 				{
-					return utils::string::va("Domain is any number %g or smaller", domain.value.max);
+					return utilities::string::va("Domain is any number %g or smaller", domain.value.max);
 				}
 			}
 			else if (domain.value.max == FLT_MAX)
 			{
-				return utils::string::va("Domain is any number %g or bigger", domain.value.min);
+				return utilities::string::va("Domain is any number %g or bigger", domain.value.min);
 			}
 			else
 			{
-				return utils::string::va("Domain is any number from %g to %g", domain.value.min, domain.value.max);
+				return utilities::string::va("Domain is any number from %g to %g", domain.value.min, domain.value.max);
 			}
 
 		case game::DVAR_TYPE_FLOAT_2:
@@ -97,16 +97,16 @@ namespace dvars
 				}
 				else
 				{
-					return utils::string::va("Domain is any integer %i or smaller", domain.integer.max);
+					return utilities::string::va("Domain is any integer %i or smaller", domain.integer.max);
 				}
 			}
 			else if (domain.integer.max == INT_MAX)
 			{
-				return utils::string::va("Domain is any integer %i or bigger", domain.integer.min);
+				return utilities::string::va("Domain is any integer %i or bigger", domain.integer.min);
 			}
 			else
 			{
-				return utils::string::va("Domain is any integer from %i to %i", domain.integer.min, domain.integer.max);
+				return utilities::string::va("Domain is any integer from %i to %i", domain.integer.min, domain.integer.max);
 			}
 
 		case game::DVAR_TYPE_ENUM:
@@ -114,7 +114,7 @@ namespace dvars
 
 			for (auto string_index = 0; string_index < domain.enumeration.stringCount; ++string_index)
 			{
-				str += utils::string::va("\n  %2i: %s", string_index, domain.enumeration.strings[string_index]);
+				str += utilities::string::va("\n  %2i: %s", string_index, domain.enumeration.strings[string_index]);
 			}
 
 			return str;
@@ -134,16 +134,16 @@ namespace dvars
 				}
 				else
 				{
-					return utils::string::va("Domain is any integer %lli or smaller", domain.integer64.max);
+					return utilities::string::va("Domain is any integer %lli or smaller", domain.integer64.max);
 				}
 			}
 			else if (domain.integer64.max == _I64_MAX)
 			{
-				return utils::string::va("Domain is any integer %lli or bigger", domain.integer64.min);
+				return utilities::string::va("Domain is any integer %lli or bigger", domain.integer64.min);
 			}
 			else
 			{
-				return utils::string::va("Domain is any integer from %lli to %lli", domain.integer64.min, domain.integer64.max);
+				return utilities::string::va("Domain is any integer from %lli to %lli", domain.integer64.min, domain.integer64.max);
 			}
 
 		case game::DVAR_TYPE_UINT64:
@@ -151,12 +151,12 @@ namespace dvars
 			{
 				if (domain.unsignedInt64.max == _UI64_MAX)
 				{
-					return utils::string::va("Domain is any unsigned integer %zu or bigger", domain.unsignedInt64.min);
+					return utilities::string::va("Domain is any unsigned integer %zu or bigger", domain.unsignedInt64.min);
 
 				}
 				else
 				{
-					return utils::string::va("Domain is any unsigned integer from %zu to %zu", domain.unsignedInt64.min, domain.unsignedInt64.max);
+					return utilities::string::va("Domain is any unsigned integer from %zu to %zu", domain.unsignedInt64.min, domain.unsignedInt64.max);
 				}
 			}
 			else if (domain.unsignedInt64.max == _UI64_MAX)
@@ -165,11 +165,11 @@ namespace dvars
 			}
 			else
 			{
-				return utils::string::va("Domain is any integer %zu or smaller", domain.unsignedInt64.max);
+				return utilities::string::va("Domain is any integer %zu or smaller", domain.unsignedInt64.max);
 			}
 
 		default:
-			return utils::string::va("unhandled dvar type '%i'", type);
+			return utilities::string::va("unhandled dvar type '%i'", type);
 		}
 	}
 
@@ -265,7 +265,7 @@ namespace dvars
 
 	game::dvar_t* find_dvar(const std::string& nameRef)
 	{
-		auto it = std::find_if(variables::dvars_record.begin(), variables::dvars_record.end(), [&nameRef](variables::varEntry& i) {  return utils::string::compare(i.name, nameRef); });
+		auto it = std::find_if(variables::dvars_record.begin(), variables::dvars_record.end(), [&nameRef](variables::varEntry& i) {  return utilities::string::compare(i.name, nameRef); });
 
 		if (it != variables::dvars_record.end() && it->pointer)
 		{

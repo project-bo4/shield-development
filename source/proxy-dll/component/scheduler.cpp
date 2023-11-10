@@ -3,9 +3,9 @@
 #include "loader/component_loader.hpp"
 
 #include <cassert>
-#include <utils/hook.hpp>
-#include <utils/concurrency.hpp>
-#include <utils/thread.hpp>
+#include <utilities/hook.hpp>
+#include <utilities/concurrency.hpp>
+#include <utilities/thread.hpp>
 
 namespace scheduler
 {
@@ -64,8 +64,8 @@ namespace scheduler
 			}
 
 		private:
-			utils::concurrency::container<task_list> new_callbacks_;
-			utils::concurrency::container<task_list, std::recursive_mutex> callbacks_;
+			utilities::concurrency::container<task_list> new_callbacks_;
+			utilities::concurrency::container<task_list, std::recursive_mutex> callbacks_;
 
 			void merge_callbacks()
 			{
@@ -85,9 +85,9 @@ namespace scheduler
 		std::thread thread;
 		task_pipeline pipelines[pipeline::count];
 
-		utils::hook::detour r_end_frame_hook;
-		utils::hook::detour g_run_frame_hook;
-		utils::hook::detour main_frame_hook;
+		utilities::hook::detour r_end_frame_hook;
+		utilities::hook::detour g_run_frame_hook;
+		utilities::hook::detour main_frame_hook;
 
 		void execute(const pipeline type)
 		{
@@ -152,7 +152,7 @@ namespace scheduler
 	public:
 		void pre_start() override
 		{
-			thread = utils::thread::create_named_thread("Async Scheduler", []()
+			thread = utilities::thread::create_named_thread("Async Scheduler", []()
 			{
 				while (!kill)
 				{

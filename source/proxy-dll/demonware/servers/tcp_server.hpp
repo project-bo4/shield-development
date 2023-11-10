@@ -1,7 +1,7 @@
 #pragma once
 
 #include "base_server.hpp"
-#include <utils/concurrency.hpp>
+#include <utilities/concurrency.hpp>
 
 namespace demonware
 {
@@ -21,7 +21,7 @@ namespace demonware
 		void send(const std::string& data);
 
 	private:
-		utils::concurrency::container<data_queue> in_queue_;
-		utils::concurrency::container<stream_queue> out_queue_;
+		utilities::concurrency::container<data_queue> in_queue_;
+		utilities::concurrency::container<stream_queue> out_queue_;
 	};
 }
