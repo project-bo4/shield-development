@@ -1,5 +1,9 @@
 #include <std_include.hpp>
 #include "../services.hpp"
+#include "../fileshare.hpp"
+#include "component/platform.hpp"
+
+#include <utilities/io.hpp>
 
 namespace demonware
 {
@@ -18,24 +22,90 @@ namespace demonware
 		this->register_task(22, &bdPooledStorage::_preDownloadMultiPart);
 	}
 
-	void bdPooledStorage::getPooledMetaDataByID(service_server* server, byte_buffer* /*buffer*/) const
+	void bdPooledStorage::getPooledMetaDataByID(service_server* server, byte_buffer* buffer) const
 	{
-		// TODO:
+		std::vector<uint64_t> requested_files;
+		buffer->read_array(10, &requested_files);
+
 		auto reply = server->create_reply(this->task_id());
+
+		for (auto fileID : requested_files)
+		{
+			std::string metafile = fileshare::get_metadata_path(fileshare::get_file_name(fileID));
+
+			fileshare::FileMetadata metadata;
+			if (metadata.ReadMetaDataJson(metafile, metadata.FILE_STATUS_DESCRIBED)
+				&& utilities::io::file_exists(fileshare::get_file_path(metadata.fileName)))
+			{
+				auto taskResult = new bdFileMetaData;
+				metadata.MetadataTaskResult(taskResult, false);
+
+				reply->add(taskResult);
+			}
+		}
+
 		reply->send();
 	}
 
-	void bdPooledStorage::_preUpload(service_server* server, byte_buffer* /*buffer*/) const
+	void bdPooledStorage::_preUpload(service_server* server, byte_buffer* buffer) const
 	{
-		// TODO:
+		std::string filename; uint16_t category;
+		buffer->read_string(&filename);
+		buffer->read_uint16(&category);
+
+		uint32_t timestamp = static_cast<uint32_t>(time(nullptr));
+
+		fileshare::FileMetadata metadata;
+		metadata.file.id = timestamp;
+		metadata.file.name = filename;
+		metadata.file.timestamp = timestamp;
+
+		metadata.author.xuid = platform::bnet_get_userid();
+		metadata.author.name = platform::bnet_get_username();
+
+		metadata.category = static_cast<fileshare::fileshareCategory_e>(category);
+		metadata.fileName = fileshare::get_file_name(metadata.file.id, metadata.category);
+
+		metadata.WriteMetaDataJson(fileshare::get_metadata_path(metadata.fileName), metadata.FILE_STATUS_UPLOADING);
+
 		auto reply = server->create_reply(this->task_id());
+
+		auto result = new bdURL;
+		result->m_url = fileshare::get_file_url(metadata.fileName);
+		result->m_serverType = 8;
+		result->m_serverIndex = "fs";
+		result->m_fileID = metadata.file.id;
+
+		reply->add(result);
 		reply->send();
 	}
 
-	void bdPooledStorage::_postUploadFile(service_server* server, byte_buffer* /*buffer*/) const
+	void bdPooledStorage::_postUploadFile(service_server* server, byte_buffer* buffer) const
 	{
-		// TODO:
+		uint64_t fileID; uint32_t fileSize;
+		uint16_t serverType; std::string serverIndex;
+
+		buffer->read_uint64(&fileID);
+		buffer->read_uint16(&serverType);
+		buffer->read_string(&serverIndex);
+		buffer->read_uint32(&fileSize);
+
+		auto metafile = fileshare::get_metadata_path(fileshare::get_file_name(fileID));
+
+		fileshare::FileMetadata metadata;
+		if (metadata.ReadMetaDataJson(metafile)) {
+			metadata.file.size = fileSize;
+			metadata.fileSize = utilities::io::file_size(fileshare::get_file_path(metadata.fileName));
+
+			metadata.WriteMetaDataJson(metafile, metadata.FILE_STATUS_UPLOADED);
+		}
+
 		auto reply = server->create_reply(this->task_id());
+
+		auto result = new bdUInt64Result;
+		result->value = fileID;
+		reply->add(result);
+
 		reply->send();
 	}
 
@@ -48,21 +118,53 @@ namespace demonware
 
 	void bdPooledStorage::_preDownload(service_server* server, byte_buffer* buffer) const
 	{
-		// TODO:
-		auto reply = server->create_reply(this->task_id());
-		reply->send();
+		uint64_t fileID;
+		buffer->read_uint64(&fileID);
+
+		std::string metafile = fileshare::get_metadata_path(fileshare::get_file_name(fileID));
+
+		fileshare::FileMetadata metadata;
+		if (metadata.ReadMetaDataJson(metafile, metadata.FILE_STATUS_DESCRIBED)
+			&& utilities::io::file_exists(fileshare::get_file_path(metadata.fileName)))
+		{
+			auto reply = server->create_reply(this->task_id());
+
+			auto taskResult = new bdFileMetaData;
+			metadata.MetadataTaskResult(taskResult, true);
+			reply->add(taskResult);
+			
+			reply->send();
+		}
+		else
+		{
+			auto reply = server->create_reply(this->task_id(), 2000/*BD_CONTENTSTREAMING_FILE_NOT_AVAILABLE*/);
+			reply->send();
+		}
 	}
 
-	void bdPooledStorage::_preUploadSummary(service_server* server, byte_buffer* /*buffer*/) const
+	void bdPooledStorage::_preUploadSummary(service_server* server, byte_buffer* buffer) const
 	{
-		// TODO:
-		auto reply = server->create_reply(this->task_id());
+		uint64_t fileID{}; uint32_t fileSize{};
+		//std::string DDL_MetaData;
+		buffer->read_uint64(&fileID);
+		buffer->read_uint32(&fileSize);
+
+		auto metafile = fileshare::get_metadata_path(fileshare::get_file_name(fileID));
+
+		fileshare::FileMetadata metadata;
+		if (metadata.ReadMetaDataJson(metafile)) {
+			buffer->read_blob(&metadata.ddl_metadata);
+			buffer->read_array(10, &metadata.tags);
+
+			metadata.WriteMetaDataJson(metafile, metadata.FILE_STATUS_DESCRIBED);
+		}
+
+		auto reply = server->create_reply(this->task_id(), 108/*BD_SERVICE_NOT_AVAILABLE*/);
 		reply->send();
 	}
 
 	void bdPooledStorage::_postUploadSummary(service_server* server, byte_buffer* /*buffer*/) const
 	{
-		// TODO:
 		auto reply = server->create_reply(this->task_id());
 		reply->send();
 	}

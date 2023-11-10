@@ -9,6 +9,7 @@
 #include "demonware/servers/auth3_server.hpp"
 #include "demonware/servers/stun_server.hpp"
 #include "demonware/servers/umbrella_server.hpp"
+#include "demonware/servers/fileshare_server.hpp"
 #include "demonware/server_registry.hpp"
 
 #define TCP_BLOCKING true
@@ -477,6 +478,7 @@ namespace demonware
 			tcp_servers.create<auth3_server>("ops4-pc-auth3.prod.demonware.net");
 			tcp_servers.create<lobby_server>("ops4-pc-lobby.prod.demonware.net");
 			tcp_servers.create<umbrella_server>("prod.umbrella.demonware.net");
+			tcp_servers.create<fileshare_server>("ops4-fileshare.prod.schild.net");
 		}
 
 		void pre_start() override

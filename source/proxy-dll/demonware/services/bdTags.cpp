@@ -1,5 +1,6 @@
 #include <std_include.hpp>
 #include "../services.hpp"
+#include "../fileshare.hpp"
 
 namespace demonware
 {
@@ -42,8 +43,19 @@ namespace demonware
 	
 	void bdTags::searchByTagsBase(service_server* server, byte_buffer* /*buffer*/) const
 	{
-		// TODO:
+		std::vector<uint64_t> demo_ids = fileshare::fileshare_list_demo_ids();
+
 		auto reply = server->create_reply(this->task_id());
+
+		for (auto id : demo_ids)
+		{
+			auto result = new bdUInt64Result;
+			result->value = id;
+			reply->add(result);
+		}
+
+		logger::write(logger::LOG_TYPE_DEBUG, "[bdTags::searchByTagsBase] Listed Total %u Demos", static_cast<uint32_t>(demo_ids.size()));
+
 		reply->send();
 	}
 }
