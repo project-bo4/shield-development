@@ -16,7 +16,9 @@ namespace game
 	typedef vec_t vec2_t[2];
 	typedef vec_t vec3_t[3];
 	typedef vec_t vec4_t[4];
-	
+
+	typedef uint32_t ScrVarIndex_t;
+	typedef uint64_t ScrVarNameIndex_t;
 	
 	//////////////////////////////////////////////////////////////////////////
 	//                               STRUCTS                                //
@@ -36,6 +38,83 @@ namespace game
 
 		return m128i;
 	}
+
+	enum scriptInstance_t : int32_t
+	{
+		SCRIPTINSTANCE_SERVER = 0x0,
+		SCRIPTINSTANCE_CLIENT = 0x1,
+		SCRIPTINSTANCE_MAX = 0x2,
+	};
+
+	typedef void (*BuiltinFunction)(scriptInstance_t);
+
+	struct BO4_BuiltinFunctionDef
+	{
+		uint32_t canonId;
+		uint32_t min_args;
+		uint32_t max_args;
+		BuiltinFunction actionFunc;
+		uint32_t type;
+	};
+
+	struct __declspec(align(4)) BO4_scrVarGlobalVars_t
+	{
+		uint32_t name;
+		ScrVarIndex_t id;
+		bool persist;
+	};
+
+
+	enum ScrVarType_t : uint32_t {
+		TYPE_UNDEFINED = 0x0,
+		TYPE_POINTER = 0x1,
+		TYPE_STRING = 0x2,
+		TYPE_VECTOR = 0x3,
+		TYPE_HASH = 0x4,
+		TYPE_FLOAT = 0x5,
+		TYPE_INTEGER = 0x6,
+		TYPE_UINTPTR = 0x7,
+		TYPE_ENTITY_OFFSET = 0x8,
+		TYPE_CODEPOS = 0x9,
+		TYPE_PRECODEPOS = 0xA,
+		TYPE_API_FUNCTION = 0xB,
+		TYPE_SCRIPT_FUNCTION = 0xC,
+		TYPE_STACK = 0xD,
+		TYPE_THREAD = 0xE,
+		TYPE_NOTIFY_THREAD = 0xF,
+		TYPE_TIME_THREAD = 0x10,
+		TYPE_FRAME_THREAD = 0x11,
+		TYPE_CHILD_THREAD = 0x12,
+		TYPE_CLASS = 0x13,
+		TYPE_SHARED_STRUCT = 0x14,
+		TYPE_STRUCT = 0x15,
+		TYPE_REMOVED_ENTITY = 0x16,
+		TYPE_ENTITY = 0x17,
+		TYPE_ARRAY = 0x18,
+		TYPE_REMOVED_THREAD = 0x19,
+		TYPE_FREE = 0x1a,
+		TYPE_THREAD_LIST = 0x1b,
+		TYPE_ENT_LIST = 0x1c
+	};
+
+
+	struct BO4_scrVarPub {
+		const char* fieldBuffer;
+		const char* error_message;
+		byte* programBuffer;
+		byte* endScriptBuffer;
+		byte* programHunkUser; // HunkUser
+		BO4_scrVarGlobalVars_t globalVars[16];
+		ScrVarNameIndex_t entFieldNameIndex;
+		ScrVarIndex_t freeEntList;
+		ScrVarIndex_t tempVariable;
+		uint32_t checksum;
+		uint32_t entId;
+		uint32_t varHighWatermark;
+		uint32_t numScriptThreads;
+		uint32_t numVarAllocations;
+		int32_t varHighWatermarkId;
+	};
 	
 	enum keyNum_t
 	{
@@ -489,11 +568,35 @@ namespace game
 	WEAK symbol<ScreenPlacement* (int localClientNum)> ScrPlace_GetView{ 0x142876E70_g };
 
 	WEAK symbol<bool()> Com_IsInGame{ 0x14288FDB0_g };
+	WEAK symbol<bool()> Com_IsRunningUILevel{ 0x14288FDF0_g };
 
 	WEAK symbol<int> keyCatchers{ 0x148A53F84_g };
 	WEAK symbol<PlayerKeyState> playerKeys{ 0x148A3EF80_g };
 
 	WEAK symbol<sharedUiInfo_t> sharedUiInfo{ 0x14F956850_g };
+
+	// Scr Functions
+
+	WEAK symbol<void(scriptInstance_t inst, int value)> ScrVm_AddBool{ 0x14276E760_g };
+	WEAK symbol<void(scriptInstance_t inst, float value)> ScrVm_AddFloat{ 0x14276E9B0_g };
+	WEAK symbol<void(scriptInstance_t inst, BO4_AssetRef_t* value)> ScrVm_AddHash{ 0x14276EAB0_g };
+	WEAK symbol<void(scriptInstance_t inst, int64_t value)> ScrVm_AddInt{ 0x14276EB80_g };
+	WEAK symbol<void(scriptInstance_t inst, const char* value) > ScrVm_AddString{ 0x14276EE30_g };
+	WEAK symbol<void(scriptInstance_t inst)> ScrVm_AddUndefined{ 0x14276F3C0_g };
+	WEAK symbol<void(scriptInstance_t inst, int32_t value)> ScrVm_AddConstString{ 0x14276E5F0_g };
+	WEAK symbol<bool(scriptInstance_t inst, unsigned int index)> ScrVm_GetBool{ 0x142772AB0_g };
+	WEAK symbol<float(scriptInstance_t inst, unsigned int index)> ScrVm_GetFloat{ 0x1427733F0_g };
+	WEAK symbol<BO4_AssetRef_t* (BO4_AssetRef_t* hash, scriptInstance_t inst, unsigned int index)> ScrVm_GetHash{ 0x1427738E0_g };
+	WEAK symbol<int64_t(scriptInstance_t inst, unsigned int index)> ScrVm_GetInt{ 0x142773B50_g };
+	WEAK symbol<const char*(scriptInstance_t inst, unsigned int index)> ScrVm_GetString{ 0x142774840_g };
+	WEAK symbol<void(scriptInstance_t inst, unsigned int index, vec3_t* vector)> ScrVm_GetVector{ 0x142774E40_g };
+	WEAK symbol<int32_t(scriptInstance_t inst, unsigned int index)> ScrVm_GetConstString{ 0x142772E10_g };
+	WEAK symbol<uint32_t(scriptInstance_t inst)> ScrVm_GetNumParam{ 0x142774440_g };
+	WEAK symbol<ScrVarType_t(scriptInstance_t inst, unsigned int index)> ScrVm_GetPointerType{ 0x1427746E0_g };
+	WEAK symbol<ScrVarType_t(scriptInstance_t inst, unsigned int index)> ScrVm_GetType{ 0x142774A20_g };
+
+	WEAK symbol<void(uint64_t code, scriptInstance_t inst, char* unused, bool terminal)> ScrVm_Error{ 0x142770330_g };
+	WEAK symbol<BO4_scrVarPub[scriptInstance_t::SCRIPTINSTANCE_MAX]> scrVarPub{ 0x148307880_g };
 	
 
 #define R_AddCmdDrawText(TXT, MC, F, X, Y, XS, YS, R, C, S) \
