@@ -2,6 +2,9 @@
 #include "definitions/game.hpp"
 
 #include "game_console.hpp"
+
+#include "gsc_funcs.hpp"
+#include "gsc_custom.hpp"
 #include "loader/component_loader.hpp"
 
 #include <utilities/io.hpp>
@@ -10,7 +13,12 @@
 #include <rapidjson/document.h>
 
 namespace mods {
-	constexpr uint64_t spt_magic = 0x36000A0D43534780;
+	// GSC File magic (8 bytes)
+	constexpr uint64_t gsc_magic = 0x36000A0D43534780;
+	// Serious' GSIC File Magic (4 bytes)
+	constexpr const char* gsic_magic = "GSIC";
+
+	constexpr const char* mod_metadata_file = "metadata.json";
 	std::filesystem::path mod_dir = "project-bo4/mods";
 
 	namespace {
@@ -44,14 +52,108 @@ namespace mods {
 			} header{};
 
 			std::string data{};
+			size_t gsic_header_size{};
 			std::unordered_set<uint64_t> hooks{};
+			gsc_custom::gsic_info gsic{};
 
 			auto* get_header()
 			{
 				header.buffer = reinterpret_cast<game::GSC_OBJ*>(data.data());
 				header.size = (uint32_t)data.length();
 
+				for (gsc_custom::gsic_detour& detour : gsic.detours)
+				{
+					detour.fixup_function = header.buffer->magic + detour.fixup_offset;
+				}
+
 				return &header;
+			}
+
+			bool can_read_gsic(size_t bytes)
+			{
+				return data.length() >= gsic_header_size + bytes;
+			}
+
+			bool load_gsic()
+			{
+				byte* ptr = (byte*)data.data();
+
+				if (!can_read_gsic(4) || memcmp(gsic_magic, ptr, 4))
+				{
+					return true; // not a gsic file
+				}
+				gsic_header_size += 4;
+
+				if (!can_read_gsic(4))
+				{
+					logger::write(logger::LOG_TYPE_ERROR, "can't read gsic fields");
+					return false;
+				}
+				int32_t fields = *reinterpret_cast<int32_t*>(ptr + gsic_header_size);
+				gsic_header_size += 4;
+
+				for (size_t i = 0; i < fields; i++)
+				{
+					if (!can_read_gsic(4))
+					{
+						logger::write(logger::LOG_TYPE_ERROR, "can't read gsic field type");
+						return false;
+					}
+
+					int32_t field_type = *reinterpret_cast<int32_t*>(ptr + gsic_header_size);
+					gsic_header_size += 4;
+
+					switch (field_type)
+					{
+					case gsc_custom::gsic_field_type::GSIC_FIELD_DETOUR:
+					{
+						// detours
+						if (!can_read_gsic(4))
+						{
+							logger::write(logger::LOG_TYPE_ERROR, "can't read gsic detours count");
+							return false;
+						}
+						int32_t detour_count = *reinterpret_cast<int32_t*>(ptr + gsic_header_size);
+						gsic_header_size += 4;
+
+
+						if (!can_read_gsic(detour_count * 256ull))
+						{
+							logger::write(logger::LOG_TYPE_ERROR, "can't read detours");
+							return false;
+						}
+
+						for (size_t j = 0; j < detour_count; j++)
+						{
+							gsc_custom::gsic_detour& detour = gsic.detours.emplace_back();
+
+							detour.fixup_name = *reinterpret_cast<uint32_t*>(ptr + gsic_header_size);
+							detour.replace_namespace = *reinterpret_cast<uint32_t*>(ptr + gsic_header_size + 4);
+							detour.replace_function = *reinterpret_cast<uint32_t*>(ptr + gsic_header_size + 8);
+							detour.fixup_offset = *reinterpret_cast<uint32_t*>(ptr + gsic_header_size + 12);
+							detour.fixup_size = *reinterpret_cast<uint32_t*>(ptr + gsic_header_size + 16);
+							detour.target_script = *reinterpret_cast<uint64_t*>(ptr + gsic_header_size + 20);
+
+							logger::write(logger::LOG_TYPE_DEBUG, std::format(
+								"read detour {:x} : namespace_{:x}<script_{:x}>::function_{:x} / offset={:x}+{:x}",
+								detour.fixup_name, detour.replace_namespace, detour.target_script, detour.replace_function,
+								detour.fixup_offset, detour.fixup_size
+							));
+
+							gsic_header_size += 256;
+						}
+					}
+					break;
+					default:
+						logger::write(logger::LOG_TYPE_ERROR, "bad gsic field type {}", field_type);
+						return false;
+					}
+				}
+
+				// we need to remove the header to keep the alignment
+				data = data.substr(gsic_header_size, data.length() - gsic_header_size);
+
+				return true;
 			}
 		};
 		struct lua_file
@@ -94,7 +196,6 @@ namespace mods {
 
 					return it->get_header();
 				}
-					break;
 				case game::ASSET_TYPE_RAWFILE:
 				{
 					auto it = std::find_if(raw_files.begin(), raw_files.end(), [name](const raw_file& file) { return file.header.name == name; });
@@ -111,7 +212,6 @@ namespace mods {
 
 					return it->get_header();
 				}
-					break;
 				default:
 					return nullptr; // unknown resource type
 				}
@@ -189,14 +289,45 @@ namespace mods {
 						return false;
 					}
 
-					if (tmp.data.length() < 8 || *reinterpret_cast<uint64_t*>(tmp.data.data()) != spt_magic)
+					if (!tmp.load_gsic())
 					{
-						logger::write(logger::LOG_TYPE_ERROR, std::format("bad scriptparsetree magic in {} for mod {} (gsic not supported)", spt_path.string(), mod_name));
+						logger::write(logger::LOG_TYPE_ERROR, std::format("error when reading GSIC header of {} for mod {}", spt_path.string(), mod_name));
 						return false;
 					}
+
+					if (tmp.gsic.detours.size())
+					{
+						logger::write(logger::LOG_TYPE_DEBUG, std::format("loaded {} detours", tmp.gsic.detours.size()));
+					}
+
+					if (tmp.data.length() < sizeof(game::GSC_OBJ) || *reinterpret_cast<uint64_t*>(tmp.data.data()) != gsc_magic)
+					{
+						logger::write(logger::LOG_TYPE_ERROR, std::format("bad scriptparsetree magic in {} for mod {}", spt_path.string(), mod_name));
+						return false;
+					}
+
+					// after this point we assume that the GSC file is well formatted
 					
+					game::GSC_OBJ* script_obj = reinterpret_cast<game::GSC_OBJ*>(tmp.data.data());
+
 					// fix compiler script name
-					reinterpret_cast<game::GSC_OBJ*>(tmp.data.data())->name = tmp.header.name;
+					script_obj->name = tmp.header.name;
+
+					// fix compiler custom namespace
+					game::GSC_IMPORT_ITEM* imports = script_obj->get_imports();
+
+					static uint32_t isprofilebuild_hash = gsc_funcs::canon_hash("IsProfileBuild");
+					static uint32_t serious_custom_func_name_hash = gsc_funcs::canon_hash(gsc_funcs::serious_custom_func_name);
+					for (size_t imp = 0; imp < script_obj->imports_count; imp++)
+					{
+						if (imports->name == isprofilebuild_hash && imports->param_count != 0)
+						{
+							// compiler:: calls, replace the call to our custom function
+							imports->name = serious_custom_func_name_hash;
+						}
+
+						imports = reinterpret_cast<game::GSC_IMPORT_ITEM*>((uint32_t*)&imports[1] + imports->num_address);
+					}
 
 					logger::write(logger::LOG_TYPE_DEBUG, std::format("mod {}: loaded scriptparsetree {} -> {:x}", mod_name, spt_path.string(), tmp.header.name));
 					gsc_files.emplace_back(tmp);
@@ -307,7 +438,7 @@ namespace mods {
 				if (!mod.is_directory()) continue; // not a directory
 
 				std::filesystem::path mod_path = mod.path();
-				std::filesystem::path mod_config = mod_path / "mod.json";
+				std::filesystem::path mod_config = mod_path / mod_metadata_file;
 
 				if (!std::filesystem::exists(mod_config)) continue; // doesn't contain the config file
 
@@ -327,33 +458,6 @@ namespace mods {
 					err = true;
 					continue;
 				}
-
-				/*
-				  prototype:
-				  {
-					  "name": "test mod",
-					  "data": [
-						  {
-							  "type" : "scriptparsetree",
-							  "name" : "scripts/shield/test.gsc",
-							  "path" : "compiled.gscc",
-							  "hooks" : [
-								  "scripts/core_common/load.gsc"
-							  ]
-						  },
-						  {
-							  "type" : "stringtable",
-							  "name" : "gamedata/shield/info.csv",
-							  "path" : "test.csv"
-						  },
-						  {
-							  "type" : "rawfile",
-							  "name" : "gamedata/shield/info.txt",
-							  "path" : "test.txt"
-						  }
-					  ]
-				  }
-				*/
 
 				auto name_member = info.FindMember("name");
 
@@ -403,6 +507,12 @@ namespace mods {
 
 		void load_mods_cmd()
 		{
+			if (!game::Com_IsRunningUILevel())
+			{
+				game_console::print("can't load mods while in-game!");
+				return;
+			}
+
 			if (!load_mods())
 			{
 				game_console::print("mods reloaded.");
@@ -431,19 +541,29 @@ namespace mods {
 
 	int scr_gsc_obj_link_stub(game::scriptInstance_t inst, game::GSC_OBJ* prime_obj, bool runScript)
 	{
-		// link the injected scripts if we find a hook
+		// link the injected scripts if we find a hook, sync the gsic fields at the same time 
+		// because we know the instance.
 		for (auto& spt : storage.gsc_files)
 		{
 			if (spt.hooks.find(prime_obj->name) != spt.hooks.end())
 			{
-				game::GSC_OBJ* script = spt.get_header()->buffer;
-				int err = scr_gsc_obj_link_hook.invoke<int>(inst, script, runScript);
+				gsc_custom::sync_gsic(inst, spt.gsic);
+				int err = scr_gsc_obj_link_hook.invoke<int>(inst, spt.get_header()->buffer, runScript);
 
 				if (err < 0)
 				{
 					return err; // error when linking
 				}
 			}
+		}
+
+		auto custom_replaced_it = std::find_if(storage.gsc_files.begin(), storage.gsc_files.end(),
+			[prime_obj](scriptparsetree& e){ return e.get_header()->buffer == prime_obj; });
+
+		if (custom_replaced_it != storage.gsc_files.end())
+		{
+			// replaced gsc file
+			gsc_custom::sync_gsic(inst, custom_replaced_it->gsic);
 		}
 
 		return scr_gsc_obj_link_hook.invoke<int>(inst, prime_obj, runScript);
@@ -456,6 +576,7 @@ namespace mods {
 		{
 			// custom assets loading
 			db_find_xasset_header_hook.create(0x142EB75B0_g, db_find_xasset_header_stub);
+
 			scr_gsc_obj_link_hook.create(0x142748F10_g, scr_gsc_obj_link_stub);
 
 			// register load mods command

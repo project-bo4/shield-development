@@ -1,5 +1,6 @@
 #include <std_include.hpp>
 #include "gsc_funcs.hpp"
+#include "gsc_custom.hpp"
 #include "definitions/game.hpp"
 #include "loader/component_loader.hpp"
 #include "component/scheduler.hpp"
@@ -131,33 +132,33 @@ namespace gsc_funcs
 
 		std::unordered_map<uint64_t, hud_elem> hud_elems{};
 
-		void shield_log(game::scriptInstance_t inst)
+		void shield_log_from(game::scriptInstance_t inst, unsigned int offset)
 		{
-			game::ScrVarType_t type = game::ScrVm_GetType(inst, 0);
+			game::ScrVarType_t type = game::ScrVm_GetType(inst, offset);
 			switch (type)
 			{
 			case game::TYPE_UNDEFINED:
 				logger::write(logger::LOG_TYPE_INFO, "[ %s VM ] undefined", inst ? "CSC" : "GSC");
 				break;
 			case game::TYPE_STRING:
-				logger::write(logger::LOG_TYPE_INFO, "[ %s VM ] %s", inst ? "CSC" : "GSC", game::ScrVm_GetString(inst, 0));
+				logger::write(logger::LOG_TYPE_INFO, "[ %s VM ] %s", inst ? "CSC" : "GSC", game::ScrVm_GetString(inst, offset));
 				break;
 			case game::TYPE_HASH:
 			{
 				game::BO4_AssetRef_t hash{};
-				logger::write(logger::LOG_TYPE_INFO, "[ %s VM ] %llx", inst ? "CSC" : "GSC", game::ScrVm_GetHash(&hash, inst, 0)->hash);
+				logger::write(logger::LOG_TYPE_INFO, "[ %s VM ] %llx", inst ? "CSC" : "GSC", game::ScrVm_GetHash(&hash, inst, offset)->hash);
 			}
 				break;
 			case game::TYPE_INTEGER:
-				logger::write(logger::LOG_TYPE_INFO, "[ %s VM ] %lld", inst ? "CSC" : "GSC", game::ScrVm_GetInt(inst, 0));
+				logger::write(logger::LOG_TYPE_INFO, "[ %s VM ] %lld", inst ? "CSC" : "GSC", game::ScrVm_GetInt(inst, offset));
 				break;
 			case game::TYPE_FLOAT:
-				logger::write(logger::LOG_TYPE_INFO, "[ %s VM ] %f", inst ? "CSC" : "GSC", game::ScrVm_GetFloat(inst, 0));
+				logger::write(logger::LOG_TYPE_INFO, "[ %s VM ] %f", inst ? "CSC" : "GSC", game::ScrVm_GetFloat(inst, offset));
 				break;
 			case game::TYPE_VECTOR: 
 			{
 				game::vec3_t vec{};
-				game::ScrVm_GetVector(inst, 0, &vec);
+				game::ScrVm_GetVector(inst, offset, &vec);
 				logger::write(logger::LOG_TYPE_INFO, "[ %s VM ] (%f, %f, %f)", inst ? "CSC" : "GSC", vec[0], vec[1], vec[2]);
 			}
 				break;
@@ -165,6 +166,11 @@ namespace gsc_funcs
 				gsc_error("Call of ShieldLog with unknown type: %d", inst, false, type);
 				break;
 			}
+		}
+
+		void shield_log(game::scriptInstance_t inst)
+		{
+			shield_log_from(inst, 0);
 		}
 
 		void shield_clear_hud_elems(game::scriptInstance_t inst)
@@ -449,6 +455,30 @@ namespace gsc_funcs
 
 			it->second.scale = game::ScrVm_GetFloat(inst, 1);
 		}
+
+		void serious_custom_func(game::scriptInstance_t inst)
+		{
+			// the t8compiler is converting the calls of compiler::func_name(...) to 
+			// SeriousCustom(#"func_name", ...) using the canon id hash for func_name
+			uint64_t hash = ((uint64_t)game::ScrVm_GetInt(inst, 0)) & 0xFFFFFFFF;
+
+			static uint64_t detour_cid = canon_hash("detour");
+			static uint64_t relink_detour_cid = canon_hash("relinkdetours");
+			static uint64_t nprintln_cid = canon_hash("nprintln");
+
+			if (hash == detour_cid || hash == relink_detour_cid)
+			{
+				logger::write(logger::LOG_TYPE_WARN, "a detour link function was called, but it isn't required by this client.");
+			}
+			else if (hash == nprintln_cid)
+			{
+				shield_log_from(inst, 1);
+			}
+			else
+			{
+				gsc_error("compiler::function_%llx not implemented", inst, false, hash);
+			}
+		}
 		
 		game::BO4_BuiltinFunctionDef custom_functions_gsc[] =
 		{
@@ -513,6 +543,13 @@ namespace gsc_funcs
 				.min_args = 2,
 				.max_args = 2,
 				.actionFunc = shield_hud_elem_set_scale,
+				.type = 0,
+			},
+			{ // SeriousCustom(func_hash, ...)
+				.canonId = canon_hash(serious_custom_func_name),
+				.min_args = 1,
+				.max_args = 255,
+				.actionFunc = serious_custom_func,
 				.type = 0,
 			}
 		};
@@ -579,6 +616,13 @@ namespace gsc_funcs
 				.min_args = 2,
 				.max_args = 2,
 				.actionFunc = shield_hud_elem_set_scale,
+				.type = 0,
+			},
+			{ // SeriousCustom(func_hash, ...)
+				.canonId = canon_hash(serious_custom_func_name),
+				.min_args = 1,
+				.max_args = 255,
+				.actionFunc = serious_custom_func,
 				.type = 0,
 			}
 		};
@@ -748,34 +792,34 @@ namespace gsc_funcs
 		{
 			const char* msg = game::ScrVm_GetString(inst, 1);
 			sprintf_s(buffer[inst], "assert fail: %s", msg);
-			game::scrVarPub[inst]->error_message = buffer[inst];
+			game::scrVarPub[inst].error_message = buffer[inst];
 		}
 			break;
 		case 1385570291:// AssertMsg(msg)
 		{
 			const char* msg = game::ScrVm_GetString(inst, 0);
 			sprintf_s(buffer[inst], "assert fail: %s", msg);
-			game::scrVarPub[inst]->error_message = buffer[inst];
+			game::scrVarPub[inst].error_message = buffer[inst];
 		}
 			break;
 		case 2532286589:// ErrorMsg(msg)
 		{
 			const char* msg = game::ScrVm_GetString(inst, 0);
 			sprintf_s(buffer[inst], "error: %s", msg);
-			game::scrVarPub[inst]->error_message = buffer[inst];
+			game::scrVarPub[inst].error_message = buffer[inst];
 		}
 			break;
 		default:
 			// put custom message for our id
 			if (code == custom_error_id)
 			{
-				game::scrVarPub[inst]->error_message = unused;
+				game::scrVarPub[inst].error_message = unused;
 			}
 			break;
 		}
 
 		logger::write(terminal ? logger::LOG_TYPE_ERROR : logger::LOG_TYPE_WARN, "[ %s VM ] %s (%lld)", 
-			inst ? "CSC" : "GSC", game::scrVarPub[inst]->error_message ? game::scrVarPub[inst]->error_message : "no message", code);
+			inst ? "CSC" : "GSC", game::scrVarPub[inst].error_message ? game::scrVarPub[inst].error_message : "no message", code);
 
 		scrvm_error.invoke<void>(code, inst, unused, terminal);
 	}
@@ -817,7 +861,7 @@ namespace gsc_funcs
 			// log gsc errors
 			scrvm_error.create(0x142770330_g, scrvm_error_stub);
 			utilities::hook::jump(0x142890470_g, scrvm_log_compiler_error);
-
+			
 			scheduler::loop(draw_hud, scheduler::renderer);
 		}
 	};

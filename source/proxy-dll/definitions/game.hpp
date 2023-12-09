@@ -228,6 +228,26 @@ namespace game
 		ASSET_TYPE_FULL_COUNT = 0xAA,
 	};
 
+	struct GSC_IMPORT_ITEM
+	{
+		uint32_t name;
+		uint32_t name_space;
+		uint16_t num_address;
+		uint8_t param_count;
+		uint8_t flags;
+	};
+
+	struct GSC_EXPORT_ITEM
+	{
+		uint32_t checksum;
+		uint32_t address;
+		uint32_t name;
+		uint32_t name_space;
+		uint32_t callback_event;
+		uint8_t param_count;
+		uint8_t flags;
+	};
+
 	struct GSC_OBJ
 	{
 		byte magic[8];
@@ -242,7 +262,7 @@ namespace game
 		int16_t imports_count;
 		uint16_t fixup_count;
 		int32_t ukn2c;
-		int32_t export_table_offset;
+		int32_t exports_offset;
 		int32_t ukn34;
 		int32_t imports_offset;
 		uint16_t globalvar_count;
@@ -255,6 +275,31 @@ namespace game
 		uint16_t include_count;
 		byte ukn5a;
 		byte ukn4c_count;
+
+		inline GSC_EXPORT_ITEM* get_exports()
+		{
+			return reinterpret_cast<GSC_EXPORT_ITEM*>(magic + exports_offset);
+		}
+
+		inline GSC_IMPORT_ITEM* get_imports()
+		{
+			return reinterpret_cast<GSC_IMPORT_ITEM*>(magic + imports_offset);
+		}
+
+		inline uint64_t* get_includes()
+		{
+			return reinterpret_cast<uint64_t*>(magic + include_offset);
+		}
+
+		inline GSC_EXPORT_ITEM* get_exports_end()
+		{
+			return get_exports() + exports_count;
+		}
+
+		inline uint64_t* get_includes_end()
+		{
+			return get_includes() + include_count;
+		}
 	};
 
 
@@ -266,6 +311,7 @@ namespace game
 	};
 
 	typedef void (*BuiltinFunction)(scriptInstance_t);
+
 
 	struct BO4_BuiltinFunctionDef
 	{
@@ -334,7 +380,52 @@ namespace game
 		uint32_t numVarAllocations;
 		int32_t varHighWatermarkId;
 	};
-	
+
+	union ScrVarValueUnion_t
+	{
+		int64_t intValue;
+		uintptr_t uintptrValue;
+		float floatValue;
+		int32_t stringValue;
+		const float* vectorValue;
+		byte* codePosValue;
+		ScrVarIndex_t pointerValue;
+	};
+
+	struct ScrVarValue_t
+	{
+		ScrVarValueUnion_t u;
+		ScrVarType_t type;
+	};
+
+	struct function_stack_t
+	{
+		byte* pos;
+		ScrVarValue_t* top;
+		ScrVarValue_t* startTop;
+		ScrVarIndex_t threadId;
+		uint16_t localVarCount;
+		uint16_t profileInfoCount;
+	};
+
+	struct ScrVmContext_t
+	{
+		ScrVarIndex_t fieldValueId;
+		ScrVarIndex_t objectId;
+		byte* lastGoodPos;
+		ScrVarValue_t* lastGoodTop;
+	};
+
+	typedef void (*VM_OP_FUNC)(scriptInstance_t, function_stack_t*, ScrVmContext_t*, bool*);
+
+	struct objFileInfo_t
+	{
+		GSC_OBJ* activeVersion;
+		int slot;
+		int refCount;
+		uint32_t groupId;
+	};
+
 	enum keyNum_t
 	{
 		K_NONE = 0x00,
@@ -814,9 +905,18 @@ namespace game
 	WEAK symbol<ScrVarType_t(scriptInstance_t inst, unsigned int index)> ScrVm_GetPointerType{ 0x1427746E0_g };
 	WEAK symbol<ScrVarType_t(scriptInstance_t inst, unsigned int index)> ScrVm_GetType{ 0x142774A20_g };
 
-	WEAK symbol<void(uint64_t code, scriptInstance_t inst, char* unused, bool terminal)> ScrVm_Error{ 0x142770330_g };
-	WEAK symbol<BO4_scrVarPub[scriptInstance_t::SCRIPTINSTANCE_MAX]> scrVarPub{ 0x148307880_g };
+	WEAK symbol<BuiltinFunction(uint32_t canonId, int* type, int* min_args, int* max_args)> CScr_GetFunction{ 0x141F13140_g };
+	WEAK symbol<BuiltinFunction(uint32_t canonId, int* type, int* min_args, int* max_args)> Scr_GetFunction{ 0x1433AF840_g };
+	WEAK symbol<void*(uint32_t canonId, int* type, int* min_args, int* max_args)> CScr_GetMethod{ 0x141F13650_g };
+	WEAK symbol<void*(uint32_t canonId, int* type, int* min_args, int* max_args)> Scr_GetMethod{ 0x1433AFC20_g };
 
+	WEAK symbol<void(uint64_t code, scriptInstance_t inst, char* unused, bool terminal)> ScrVm_Error{ 0x142770330_g };
+	WEAK symbol<BO4_scrVarPub> scrVarPub{ 0x148307880_g };
+
+	WEAK symbol<VM_OP_FUNC> gVmOpJumpTable{ 0x144EED340_g };
+	WEAK symbol<uint32_t> gObjFileInfoCount{ 0x1482F76B0_g };
+	WEAK symbol<objFileInfo_t[SCRIPTINSTANCE_MAX][650]> gObjFileInfo{ 0x1482EFCD0_g };
+	     
 	WEAK symbol<void(BO4_AssetRef_t* cmdName, xcommand_t function, cmd_function_t* allocedCmd)> Cmd_AddCommandInternal{0x143CDEE80_g};
 	
 #define Cmd_AddCommand(name, function) \
