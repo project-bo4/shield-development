@@ -73,6 +73,7 @@
 #include <variant>
 #include <cassert>
 
+#include <rapidcsv.h>
 #include <MinHook.h>
 #include <asmjit/core/jitruntime.h>
 #include <asmjit/x86/x86assembler.h>

@@ -146,7 +146,7 @@ namespace gsc_custom
 
 									// align for ptr
 									byte** ptr_loc = (byte**)align_ptr<uintptr_t>(loc + 2 + offset);
-#ifdef _DEBUG
+#ifdef _DEBUG_DETOUR
 									logger::write(logger::LOG_TYPE_DEBUG, 
 										std::format(
 											"linking detours for namespace_{:x}<script_{:x}>::function_{:x} at {} : {} -> {} (0x{:x})",

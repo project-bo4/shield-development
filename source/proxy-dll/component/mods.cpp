@@ -1,4 +1,5 @@
 #include <std_include.hpp>
+#include "definitions/xassets.hpp"
 #include "definitions/game.hpp"
 
 #include "game_console.hpp"
@@ -9,8 +10,6 @@
 
 #include <utilities/io.hpp>
 #include <utilities/hook.hpp>
-
-#include <rapidjson/document.h>
 
 namespace mods {
 	// GSC File magic (8 bytes)
@@ -24,12 +23,7 @@ namespace mods {
 	namespace {
 		struct raw_file
 		{
-			struct {
-				uint64_t name{};
-				uint64_t pad8{};
-				uint64_t size{};
-				const char* buffer{};
-			} header{};
+			xassets::raw_file_header header{};
 
 			std::string data{};
 
@@ -43,13 +37,7 @@ namespace mods {
 		};
 		struct scriptparsetree
 		{
-			struct {
-				uint64_t name{};
-				uint64_t pad8{};
-				game::GSC_OBJ* buffer{};
-				uint32_t size{};
-				uint32_t pad20{};
-			} header{};
+			xassets::scriptparsetree_header header{};
 
 			std::string data{};
 			size_t gsic_header_size{};
@@ -158,12 +146,7 @@ namespace mods {
 		};
 		struct lua_file
 		{
-			struct {
-				uint64_t name{};
-				uint64_t pad8{};
-				uint64_t size{};
-				byte* buffer{};
-			} header{};
+			xassets::lua_file_header header{};
 
 			std::string data{};
 
@@ -175,20 +158,71 @@ namespace mods {
 				return &header;
 			}
 		};
+		struct string_table_file
+		{
+			xassets::stringtable_header header{};
+
+			std::string data{};
+			std::vector<xassets::stringtable_cell> cells{};
+
+			auto* get_header()
+			{
+				header.values = cells.data();
+
+				return &header;
+			}
+		};
 
 
 		class mod_storage
 		{
 		public:
+			std::mutex load_mutex{};
+			std::vector<char*> allocated_strings{};
 			std::vector<scriptparsetree> gsc_files{};
 			std::vector<raw_file> raw_files{};
 			std::vector<lua_file> lua_files{};
+			std::vector<string_table_file> csv_files{};
 
-			void* get_xasset(game::XAssetType type, uint64_t name)
+			~mod_storage()
 			{
+				for (char* str : allocated_strings)
+				{
+					delete str;
+				}
+			}
+
+			void clear()
+			{
+				// clear previously loaded files
+				raw_files.clear();
+				gsc_files.clear();
+				lua_files.clear();
+				csv_files.clear();
+
+				for (char* str : allocated_strings)
+				{
+					delete str;
+				}
+				allocated_strings.clear();
+			}
+
+			char* allocate_string(const std::string& string)
+			{
+				char* str = new char[string.length() + 1];
+				memcpy(str, string.c_str(), string.length() + 1);
+
+				allocated_strings.emplace_back(str);
+
+				return str;
+			}
+
+			void* get_xasset(xassets::XAssetType type, uint64_t name)
+			{
+				std::lock_guard lg{ load_mutex };
 				switch (type)
 				{
-				case game::ASSET_TYPE_SCRIPTPARSETREE:
+				case xassets::ASSET_TYPE_SCRIPTPARSETREE:
 				{
 					auto it = std::find_if(gsc_files.begin(), gsc_files.end(), [name](const scriptparsetree& file) { return file.header.name == name; });
 
@@ -196,7 +230,7 @@ namespace mods {
 
 					return it->get_header();
 				}
-				case game::ASSET_TYPE_RAWFILE:
+				case xassets::ASSET_TYPE_RAWFILE:
 				{
 					auto it = std::find_if(raw_files.begin(), raw_files.end(), [name](const raw_file& file) { return file.header.name == name; });
 
@@ -204,11 +238,19 @@ namespace mods {
 
 					return it->get_header();
 				}
-				case game::ASSET_TYPE_LUAFILE:
+				case xassets::ASSET_TYPE_LUAFILE:
 				{
 					auto it = std::find_if(lua_files.begin(), lua_files.end(), [name](const lua_file& file) { return file.header.name == name; });
 
 					if (it == lua_files.end()) return nullptr;
+
+					return it->get_header();
+				}
+				case xassets::ASSET_TYPE_STRINGTABLE:
+				{
+					auto it = std::find_if(csv_files.begin(), csv_files.end(), [name](const string_table_file& file) { return file.header.name == name; });
+
+					if (it == csv_files.end()) return nullptr;
 
 					return it->get_header();
 				}
@@ -404,6 +446,154 @@ namespace mods {
 					logger::write(logger::LOG_TYPE_DEBUG, std::format("mod {}: loaded lua file {} -> {:x}", mod_name, lua_file_path.string(), tmp.header.name));
 					lua_files.emplace_back(tmp);
 				}
+				else if (!_strcmpi("stringtable", type_val))
+				{
+					/*
+						{
+							"type" : "stringtable",
+							"name" : "gamedata/shield/test.csv",
+							"path" : "test.csv"
+						}
+					*/
+
+					auto name_mb = member.FindMember("name");
+					auto path_mb = member.FindMember("path");
+
+					if (
+						name_mb == member.MemberEnd() || path_mb == member.MemberEnd()
+						|| !name_mb->value.IsString() || !path_mb->value.IsString()
+						)
+					{
+						logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a bad stringtable def, missing/bad name or path", mod_name));
+						return false;
+					}
+
+					string_table_file tmp{};
+					std::filesystem::path path_cfg = path_mb->value.GetString();
+					auto stringtable_file_path = path_cfg.is_absolute() ? path_cfg : (mod_path / path_cfg);
+					tmp.header.name = fnv1a::generate_hash_pattern(name_mb->value.GetString());
+
+					if (!utilities::io::read_file(stringtable_file_path.string(), &tmp.data))
+					{
+						logger::write(logger::LOG_TYPE_ERROR, std::format("can't read stringtable file {} for mod {}", stringtable_file_path.string(), mod_name));
+						return false;
+					}
+
+					rapidcsv::Document doc{};
+
+					std::stringstream stream{ tmp.data };
+
+					doc.Load(stream, rapidcsv::LabelParams(-1, -1));
+
+					size_t rows_count_tmp = doc.GetRowCount();
+					tmp.header.rows_count = rows_count_tmp != 0 ? (int32_t)(rows_count_tmp - 1) : 0;
+					tmp.header.columns_count = (int32_t)doc.GetColumnCount();
+
+					std::vector<xassets::stringtable_cell_type> cell_types{};
+
+					for (size_t i = 0; i < tmp.header.columns_count; i++)
+					{
+						// read cell types
+						const std::string cell = doc.GetCell<std::string>(i, 0);
+
+						xassets::stringtable_cell_type cell_type = xassets::STC_TYPE_STRING;
+						if (cell == "undefined")
+						{
+							cell_type = xassets::STC_TYPE_UNDEFINED;
+						}
+						else if (cell == "string")
+						{
+							cell_type = xassets::STC_TYPE_STRING;
+						}
+						else if (cell == "int")
+						{
+							cell_type = xassets::STC_TYPE_INT;
+						}
+						else if (cell == "float")
+						{
+							cell_type = xassets::STC_TYPE_FLOAT;
+						}
+						else if (cell == "hash")
+						{
+							cell_type = xassets::STC_TYPE_HASHED2;
+						}
+						else if (cell == "hash7")
+						{
+							cell_type = xassets::STC_TYPE_HASHED7;
+						}
+						else if (cell == "hash8")
+						{
+							cell_type = xassets::STC_TYPE_HASHED8;
+						}
+						else if (cell == "bool")
+						{
+							cell_type = xassets::STC_TYPE_BOOL;
+						}
+						else
+						{
+							logger::write(logger::LOG_TYPE_ERROR, std::format("mod {} : can't read stringtable {} type of column {} : '{}'", mod_name, stringtable_file_path.string(), i, cell));
+							return false;
+						}
+
+						cell_types.emplace_back(cell_type);
+					}
+
+					for (size_t row = 1; row <= tmp.header.rows_count; row++)
+					{
+						// read cells
+						for (size_t column = 0; column < tmp.header.columns_count; column++)
+						{
+							xassets::stringtable_cell_type cell_type = cell_types[column];
+
+							const std::string cell_str = doc.GetCell<std::string>(column, row);
+
+							xassets::stringtable_cell& cell = tmp.cells.emplace_back();
+							cell.type = cell_type;
+
+							try
+							{
+								switch (cell_type)
+								{
+								case xassets::STC_TYPE_UNDEFINED:
+									cell.value.int_value = 0;
+									break;
+								case xassets::STC_TYPE_BOOL:
+									cell.value.bool_value = cell_str == "true";
+									break;
+								case xassets::STC_TYPE_HASHED2:
+								case xassets::STC_TYPE_HASHED7:
+								case xassets::STC_TYPE_HASHED8:
+									cell.value.hash_value = fnv1a::generate_hash_pattern(cell_str.c_str());
+									break;
+								case xassets::STC_TYPE_INT:
+									if (cell_str.starts_with("0x"))
+									{
+										cell.value.int_value = std::stoull(cell_str.substr(2), nullptr, 16);
+									}
+									else
+									{
+										cell.value.int_value = std::stoll(cell_str);
+									}
+									break;
+								case xassets::STC_TYPE_FLOAT:
+									cell.value.float_value = std::stof(cell_str);
+									break;
+								case xassets::STC_TYPE_STRING:
+									cell.value.string_value = allocate_string(cell_str);
+									break;
+								}
+							}
+							catch (const std::invalid_argument& e)
+							{
+								logger::write(logger::LOG_TYPE_DEBUG, std::format("mod {}: error when loading stringtable file {} : {} [line {} col {}] '{}'", mod_name, stringtable_file_path.string(), e.what(), row, column, cell_str));
+								return false;
+							}
+						}
+					}
+					
+					logger::write(logger::LOG_TYPE_DEBUG, std::format("mod {}: loaded stringtable file {} -> {:x}", mod_name, stringtable_file_path.string(), tmp.header.name));
+					csv_files.emplace_back(tmp);
+				}
 				else
 				{
 					logger::write(logger::LOG_TYPE_ERROR, std::format("mod {} is load data member with an unknown type '{}'", mod_name, type_val));
@@ -413,107 +603,102 @@ namespace mods {
 				return true;
 			}
 
-			void clear()
+			bool load_mods()
 			{
-				// clear previously loaded files
-				raw_files.clear();
-				gsc_files.clear();
-				lua_files.clear();
+				std::lock_guard lg{ load_mutex };
+				clear();
+				rapidjson::Document info{};
+				std::string mod_info{};
+
+				bool err = false;
+
+				std::filesystem::create_directories(mod_dir);
+				for (const auto& mod : std::filesystem::directory_iterator{ mod_dir })
+				{
+					if (!mod.is_directory()) continue; // not a directory
+
+					std::filesystem::path mod_path = mod.path();
+					std::filesystem::path mod_config = mod_path / mod_metadata_file;
+
+					if (!std::filesystem::exists(mod_config)) continue; // doesn't contain the config file
+
+
+					std::string filename = mod_config.string();
+					if (!utilities::io::read_file(filename, &mod_info))
+					{
+						logger::write(logger::LOG_TYPE_ERROR, std::format("can't read mod config file '{}'", filename));
+						err = true;
+						continue;
+					}
+
+					info.Parse(mod_info);
+
+					if (info.HasParseError()) {
+						logger::write(logger::LOG_TYPE_ERROR, std::format("can't parse mod json config '{}'", filename));
+						err = true;
+						continue;
+					}
+
+					auto name_member = info.FindMember("name");
+
+					const char* mod_name;
+
+					if (name_member != info.MemberEnd() && name_member->value.IsString())
+					{
+						mod_name = name_member->value.GetString();
+					}
+					else
+					{
+						mod_name = filename.c_str();
+					}
+					logger::write(logger::LOG_TYPE_INFO, std::format("loading mod {}...", mod_name));
+
+					int mod_errors = 0;
+					auto data_member = info.FindMember("data");
+
+					if (data_member != info.MemberEnd() && data_member->value.IsArray())
+					{
+						auto data_array = data_member->value.GetArray();
+
+						for (rapidjson::Value& member : data_array)
+						{
+							if (!member.IsObject())
+							{
+								logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a bad data member", mod_name));
+								mod_errors++;
+								continue;
+							}
+
+							if (!read_data_entry(member, mod_name, mod_path))
+							{
+								mod_errors++;
+							}
+						}
+					}
+
+					if (mod_errors)
+					{
+						logger::write(logger::LOG_TYPE_WARN, std::format("mod {} loaded with {} error{}.", mod_name, mod_errors, mod_errors > 1 ? "s" : ""));
+						err = true;
+					}
+				}
+				return err;
 			}
 		};
 
 		mod_storage storage{};
 
-		bool load_mods()
-		{
-			storage.clear();
-			rapidjson::Document info{};
-			std::string mod_info{};
-
-			bool err = false;
-
-			std::filesystem::create_directories(mod_dir);
-			for (const auto& mod : std::filesystem::directory_iterator{ mod_dir })
-			{
-				if (!mod.is_directory()) continue; // not a directory
-
-				std::filesystem::path mod_path = mod.path();
-				std::filesystem::path mod_config = mod_path / mod_metadata_file;
-
-				if (!std::filesystem::exists(mod_config)) continue; // doesn't contain the config file
-
-
-				std::string filename = mod_config.string();
-				if (!utilities::io::read_file(filename, &mod_info))
-				{
-					logger::write(logger::LOG_TYPE_ERROR, std::format("can't read mod config file '{}'", filename));
-					err = true;
-					continue;
-				}
-
-				info.Parse(mod_info);
-
-				if (info.HasParseError()) {
-					logger::write(logger::LOG_TYPE_ERROR, std::format("can't parse mod json config '{}'", filename));
-					err = true;
-					continue;
-				}
-
-				auto name_member = info.FindMember("name");
-
-				const char* mod_name;
-
-				if (name_member != info.MemberEnd() && name_member->value.IsString())
-				{
-					mod_name = name_member->value.GetString();
-				}
-				else
-				{
-					mod_name = filename.c_str();
-				}
-				logger::write(logger::LOG_TYPE_INFO, std::format("loading mod {}...", mod_name));
-
-				int mod_errors = 0;
-				auto data_member = info.FindMember("data");
-
-				if (data_member != info.MemberEnd() && data_member->value.IsArray())
-				{
-					auto data_array = data_member->value.GetArray();
-
-					for (rapidjson::Value& member : data_array)
-					{
-						if (!member.IsObject())
-						{
-							logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a bad data member", mod_name));
-							mod_errors++;
-							continue;
-						}
-
-						if (!storage.read_data_entry(member, mod_name, mod_path))
-						{
-							mod_errors++;
-						}
-					}
-				}
-
-				if (mod_errors)
-				{
-					logger::write(logger::LOG_TYPE_WARN, std::format("mod {} loaded with {} error{}.", mod_name, mod_errors, mod_errors > 1 ? "s" : ""));
-					err = true;
-				}
-			}
-			return err;
-		}
 
 		void load_mods_cmd()
 		{
 			if (!game::Com_IsRunningUILevel())
 			{
-				game_console::print("can't load mods while in-game!");
+				// avoid gsc issues, but if a script is loaded in the frontend, it will still crash
+				game_console::print("can't load mods while in-game!"); 
 				return;
 			}
 
-			if (!load_mods())
+			if (!storage.load_mods())
 			{
 				game_console::print("mods reloaded.");
 			}
@@ -527,7 +712,7 @@ namespace mods {
 	utilities::hook::detour db_find_xasset_header_hook;
 	utilities::hook::detour scr_gsc_obj_link_hook;
 
-	void* db_find_xasset_header_stub(game::XAssetType type, game::BO4_AssetRef_t* name, bool errorIfMissing, int waitTime)
+	void* db_find_xasset_header_stub(xassets::XAssetType type, game::BO4_AssetRef_t* name, bool errorIfMissing, int waitTime)
 	{
 		void* header = storage.get_xasset(type, name->hash);
 
@@ -585,7 +770,7 @@ namespace mods {
 
 		void pre_start() override
 		{
-			load_mods();
+			storage.load_mods();
 		}
 	};
 }

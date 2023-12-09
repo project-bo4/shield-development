@@ -28,3 +28,6 @@
 [submodule "deps/xxhash"]
 	path = deps/xxhash
 	url = https://github.com/stbrumme/xxhash.git
+[submodule "deps/rapidcsv"]
+	path = deps/rapidcsv
+	url = https://github.com/d99kris/rapidcsv

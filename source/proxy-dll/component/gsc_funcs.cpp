@@ -82,7 +82,7 @@ namespace gsc_funcs
 					delta = 0;
 					break;
 				case HUD_ALIGN_X_CENTER:
-					delta = width / 2;
+					delta = -width / 2;
 					break;
 				case HUD_ALIGN_X_RIGHT:
 					delta = -width;
@@ -110,7 +110,7 @@ namespace gsc_funcs
 					delta = 0;
 					break;
 				case HUD_ALIGN_Y_MIDDLE:
-					delta = height / 2;
+					delta = -height / 2;
 					break;
 				case HUD_ALIGN_Y_BOTTOM:
 					delta = -height;
@@ -358,14 +358,7 @@ namespace gsc_funcs
 				return;
 			}
 
-			float val = game::ScrVm_GetFloat(inst, 1);
-			if (val >= 0.01)
-			{
-				it->second.y = val;
-			}
-			else {
-				gsc_error("bad scale value: %f", inst, false, val);
-			}
+			it->second.y = game::ScrVm_GetFloat(inst, 1);
 		}
 
 		void shield_hud_elem_set_color(game::scriptInstance_t inst)
@@ -453,7 +446,14 @@ namespace gsc_funcs
 				return;
 			}
 
-			it->second.scale = game::ScrVm_GetFloat(inst, 1);
+			float val = game::ScrVm_GetFloat(inst, 1);
+			if (val >= 0.01)
+			{
+				it->second.scale = val;
+			}
+			else {
+				gsc_error("bad scale value: %f", inst, false, val);
+			}
 		}
 
 		void serious_custom_func(game::scriptInstance_t inst)
@@ -531,14 +531,14 @@ namespace gsc_funcs
 				.actionFunc = shield_hud_elem_set_y,
 				.type = 0,
 			},
-			{ // ShieldHudElemSetY(id, color_vec) |  ShieldHudElemSetY(id, color_rgba) |  ShieldHudElemSetY(id, r, g, b)
+			{ // ShieldHudElemSetColor(id, color_vec) |  ShieldHudElemSetColor(id, color_rgba) |  ShieldHudElemSetColor(id, r, g, b)
 				.canonId = canon_hash("ShieldHudElemSetColor"),
 				.min_args = 2,
 				.max_args = 4,
 				.actionFunc = shield_hud_elem_set_color,
 				.type = 0,
 			},
-			{ // ShieldHudElemSetY(id, scale)
+			{ // ShieldHudElemSetScale(id, scale)
 				.canonId = canon_hash("ShieldHudElemSetScale"),
 				.min_args = 2,
 				.max_args = 2,
@@ -604,14 +604,14 @@ namespace gsc_funcs
 				.actionFunc = shield_hud_elem_set_y,
 				.type = 0,
 			},
-			{ // ShieldHudElemSetY(id, color_vec) |  ShieldHudElemSetY(id, color_rgba) |  ShieldHudElemSetY(id, r, g, b)
+			{ // ShieldHudElemSetColor(id, color_vec) |  ShieldHudElemSetColor(id, color_rgba) |  ShieldHudElemSetColor(id, r, g, b)
 				.canonId = canon_hash("ShieldHudElemSetColor"),
 				.min_args = 2,
 				.max_args = 4,
 				.actionFunc = shield_hud_elem_set_color,
 				.type = 0,
 			},
-			{ // ShieldHudElemSetY(id, scale)
+			{ // ShieldHudElemSetScale(id, scale)
 				.canonId = canon_hash("ShieldHudElemSetScale"),
 				.min_args = 2,
 				.max_args = 2,
