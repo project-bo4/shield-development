@@ -1,7 +1,10 @@
 #include <std_include.hpp>
 #include "loader/component_loader.hpp"
+#include "definitions/game.hpp"
+#include "definitions/variables.hpp"
 
 #include <utilities/hook.hpp>
+#include <utilities/json_config.hpp>
 
 namespace unlockall
 {
@@ -29,38 +32,38 @@ namespace unlockall
 			1000018,			// zm_bgb_cache_back
 			1000019,			// zm_bgb_join_the_party
 			1000020,			// zm_bgb_wall_power
-			1000021,			// [0x596A42B9715FCF4E]
-			1000022,			// [0x3ECEF105EDFCE221]
-			1000023,			// [0x4A2042B3984A50AC]
-			1000024,			// [0x4C39AFAA7B8D508C]
-			1000025,			// [0x616F409871DE1C2A]
-			1000026,			// [0x233AD55AC2B835D0]
-			1000027,			// [0x3E64B28EDF21732A]
-			1000028,			// [0xD2C0474517A8626 ]
-			1000029,			// [0x589C4CE1578064B7]
-			1000030,			// [0x589C4DE15780666A]
-			1000031,			// [0x589C4EE15780681D]
-			1000032,			// [0x589C47E157805C38]
-			1000033,			// [0x1C519F7F8371ECF8]
-			1000034,			// [0x70EEBDA916971B02]
-			1000035,			// [0x1A0802EC72B26A24]
-			1000036,			// [0xCAFC6BD7BFA105A ]
-			1000037,			// [0x6BD593B03DBE4709]
-			1000038,			// [0x7BA5A74038BFFAB4]
-			1000039,			// [0x7BA5AA4038BFFFCD]
-			1000040,			// [0x7BA5A94038BFFE1A]
-			1000041,			// [0x7BA5A44038BFF59B]
-			1000042,			// [0x2DA3AF324B74C125]
-			1000043,			// [0x24D9B998E4BC4F8 ]
-			1000044,			// [0x17AFAE5369A40BC2]
-			1000045,			// [0x17AFAD5369A40A0F]
-			1000046,			// [0x17AFAC5369A4085C]
-			1000047,			// [0x17AFAB5369A406A9]
-			1000048,			// [0x54709F2CDFEC5C52]
-			1000049,			// [0x150670241DFB72AF]
-			1000050,			// [0x576221EC95A6B4D1]
-			1000051,			// [0x15066F241DFB70FC]
-			1000052,			// [0x5567F18899A438F1]
+			1000021,			// talisman_box_guarantee_box_only
+			1000022,			// talisman_coagulant
+			1000023,			// talisman_extra_claymore
+			1000024,			// talisman_extra_frag
+			1000025,			// talisman_extra_molotov
+			1000026,			// talisman_extra_semtex
+			1000027,			// talisman_impatient
+			1000028,			// talisman_weapon_reducepapcost
+			1000029,			// talisman_perk_reducecost_1
+			1000030,			// talisman_perk_reducecost_2
+			1000031,			// talisman_perk_reducecost_3
+			1000032,			// talisman_perk_reducecost_4
+			1000033,			// talisman_shield_price
+			1000034,			// talisman_special_xp_rate
+			1000035,			// talisman_start_weapon_smg
+			1000036,			// talisman_box_guarantee_lmg
+			1000037,			// talisman_extra_miniturret
+			1000038,			// talisman_perk_start_1
+			1000039,			// talisman_perk_start_2
+			1000040,			// talisman_perk_start_3
+			1000041,			// talisman_perk_start_4
+			1000042,			// talisman_shield_durability_rare
+			1000043,			// talisman_start_weapon_ar
+			1000044,			// talisman_perk_permanent_1 
+			1000045,			// talisman_perk_permanent_2 
+			1000046,			// talisman_perk_permanent_3 
+			1000047,			// talisman_perk_permanent_4 
+			1000048,			// talisman_shield_durability_legendary 
+			1000049,			// talisman_special_startlv2 
+			1000050,			// talisman_start_weapon_lmg 
+			1000051,			// talisman_special_startlv3 
+			1000052,			// talisman_perk_mod_single 
 			1000053,			// zm_bgb_refresh_mint
 			1000054,			// zm_bgb_perk_up
 			1000055,			// zm_bgb_conflagration_liquidation
@@ -68,8 +71,8 @@ namespace unlockall
 			1000057,			// zm_bgb_talkin_bout_regeneration
 			1000058,			// zm_bgb_dividend_yield
 			1000059,			// zm_bgb_suit_up
-			1000060,			// [0x1734F461CBE4850D]
-			1000061,			// [0x4053DCE90F31AA76]
+			1000060,			// talisman_permanent_heroweap_armor
+			1000061,			// talisman_extra_self_revive
 			1000062,			// zm_bgb_perkaholic
 			1000063,			// zm_bgb_near_death_experience
 			1000064,			// zm_bgb_shopping_free
@@ -96,14 +99,63 @@ namespace unlockall
 
 			return result;
 		}
+
+		bool bg_unlockedgetchallengeunlockedforindex(game::eModes mode, int32_t controller, uint16_t index, int32_t itemIndex)
+		{
+			return true;
+		}
+
+		bool bg_unlockablesitemoptionlocked(game::eModes mode, int32_t controller, int itemIndex, int32_t optionIndex)
+		{
+			return false;
+		}
+
+		bool bg_unlockablesisitemattachmentlocked(game::eModes mode, int32_t controller, int32_t itemIndex, int32_t attachmentNum)
+		{
+			return false;
+		}
+
+		bool bg_unlockablesisattachmentslotlocked(game::eModes mode, int32_t controller, int32_t itemIndex, int32_t attachmentSlotIndex)
+		{
+			return false;
+		}
+
+		bool bg_unlockablesemblemorbackinglockedbychallenge(game::eModes mode, int32_t controller, void* challengeLookup, bool otherPlayer)
+		{
+			return false;
+		}
+
+		bool bg_emblemisentitlementbackgroundgranted(int32_t controller, uint16_t backgroundId)
+		{
+			return true;
+		}
+
+		bool bg_unlockablesisitemlocked(game::eModes mode, int32_t controller, int32_t itemIndex)
+		{
+			return false;
+		}
+
+		int32_t bg_unlockablesgetcustomclasscount(game::eModes mode, int32_t controller)
+		{
+			return 12; // max is 12
+		}
 	}
-	
+
 	class component final : public component_interface
 	{
 	public:
 		void post_unpack() override
 		{
 			utilities::hook::jump(0x1437F6ED0_g, liveinventory_getitemquantity);
+
+			utilities::hook::jump(0x1406BB410_g, bg_unlockedgetchallengeunlockedforindex);
+			utilities::hook::jump(0x1406B5530_g, bg_unlockablesitemoptionlocked);
+			utilities::hook::jump(0x1406B34D0_g, bg_unlockablesisitemattachmentlocked);
+			utilities::hook::jump(0x1406B3290_g, bg_unlockablesisattachmentslotlocked);
+			utilities::hook::jump(0x1406AC010_g, bg_unlockablesemblemorbackinglockedbychallenge);
+			utilities::hook::jump(0x144184D20_g, bg_emblemisentitlementbackgroundgranted);
+			utilities::hook::jump(0x1406B3AA0_g, bg_unlockablesisitemlocked);
+			utilities::hook::jump(0x1406ae060_g, bg_unlockablesgetcustomclasscount);
 		}
 	};
 }
