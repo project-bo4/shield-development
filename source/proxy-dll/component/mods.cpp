@@ -273,17 +273,6 @@ namespace mods {
 
 				if (!_strcmpi("scriptparsetree", type_val))
 				{
-					/*
-						{
-							"type" : "scriptparsetree",
-							"name" : "scripts/shield/test.gsc",
-							"path" : "compiled.gscc",
-							"hooks" : [
-								"scripts/core_common/load.gsc"
-							]
-						}
-					*/
-
 					auto name_mb = member.FindMember("name");
 					auto path_mb = member.FindMember("path");
 
@@ -376,14 +365,6 @@ namespace mods {
 				}
 				else if (!_strcmpi("rawfile", type_val))
 				{
-					/*
-						{
-							"type" : "rawfile",
-							"name" : "gamedata/shield/info.txt",
-							"path" : "test.txt"
-						}
-					*/
-
 					auto name_mb = member.FindMember("name");
 					auto path_mb = member.FindMember("path");
 
@@ -412,14 +393,6 @@ namespace mods {
 				}
 				else if (!_strcmpi("luafile", type_val))
 				{
-					/*
-						{
-							"type" : "luafile",
-							"name" : "ui/shield/mod.lua",
-							"path" : "test.lua"
-						}
-					*/
-
 					auto name_mb = member.FindMember("name");
 					auto path_mb = member.FindMember("path");
 
@@ -448,14 +421,6 @@ namespace mods {
 				}
 				else if (!_strcmpi("stringtable", type_val))
 				{
-					/*
-						{
-							"type" : "stringtable",
-							"name" : "gamedata/shield/test.csv",
-							"path" : "test.csv"
-						}
-					*/
-
 					auto name_mb = member.FindMember("name");
 					auto path_mb = member.FindMember("path");
 
@@ -608,7 +573,7 @@ namespace mods {
 				std::lock_guard lg{ load_mutex };
 				clear();
 				rapidjson::Document info{};
-				std::string mod_info{};
+				std::string mod_metadata{};
 
 				bool err = false;
 
@@ -618,23 +583,23 @@ namespace mods {
 					if (!mod.is_directory()) continue; // not a directory
 
 					std::filesystem::path mod_path = mod.path();
-					std::filesystem::path mod_config = mod_path / mod_metadata_file;
+					std::filesystem::path mod_metadata_path = mod_path / mod_metadata_file;
 
-					if (!std::filesystem::exists(mod_config)) continue; // doesn't contain the config file
+					if (!std::filesystem::exists(mod_metadata_path)) continue; // doesn't contain the metadata file
 
 
-					std::string filename = mod_config.string();
-					if (!utilities::io::read_file(filename, &mod_info))
+					std::string filename = mod_metadata_path.string();
+					if (!utilities::io::read_file(filename, &mod_metadata))
 					{
-						logger::write(logger::LOG_TYPE_ERROR, std::format("can't read mod config file '{}'", filename));
+						logger::write(logger::LOG_TYPE_ERROR, std::format("can't read mod metadata file '{}'", filename));
 						err = true;
 						continue;
 					}
 
-					info.Parse(mod_info);
+					info.Parse(mod_metadata);
 
 					if (info.HasParseError()) {
-						logger::write(logger::LOG_TYPE_ERROR, std::format("can't parse mod json config '{}'", filename));
+						logger::write(logger::LOG_TYPE_ERROR, std::format("can't parse mod json metadata '{}'", filename));
 						err = true;
 						continue;
 					}
@@ -765,7 +730,7 @@ namespace mods {
 			scr_gsc_obj_link_hook.create(0x142748F10_g, scr_gsc_obj_link_stub);
 
 			// register load mods command
-			Cmd_AddCommand("shield_load_mods", load_mods_cmd);
+			Cmd_AddCommand("reload_mods", load_mods_cmd);
 		}
 
 		void pre_start() override

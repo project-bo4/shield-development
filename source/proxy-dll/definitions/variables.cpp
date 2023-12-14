@@ -6497,9 +6497,9 @@ namespace variables
 			0x1DEE6107B26F8BB6
 		},
 		{
-			"shield_load_mods",
+			"reload_mods",
 			"Reload the shield mods",
-			0x1b338cc3c426b8f7
+			0x6cb53357b4ef835c
 		}
 	};
 
