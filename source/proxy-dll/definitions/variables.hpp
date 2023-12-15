@@ -3,6 +3,8 @@
 namespace fnv1a
 {
 	uint64_t generate_hash(const char* string);
+
+	uint64_t generate_hash_pattern(const char* string);
 }
 
 namespace variables

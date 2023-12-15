@@ -15,6 +15,22 @@ namespace fnv1a
 
 		return (Result & 0x7FFFFFFFFFFFFFFF);
 	}
+
+	uint64_t generate_hash_pattern(const char* string)
+	{
+		std::string_view v{ string };
+
+		// basic notations hash_123, file_123, script_123
+		if (!v.rfind("hash_", 0)) return std::strtoull(&string[5], nullptr, 16);
+		if (!v.rfind("file_", 0)) return std::strtoull(&string[5], nullptr, 16);
+		if (!v.rfind("script_", 0)) return std::strtoull(&string[7], nullptr, 16);
+
+		// lua notation x64:123
+		if (!v.rfind("x64:", 0)) return std::strtoull(&string[4], nullptr, 16);
+		
+		// unknown, use hashed value
+		return generate_hash(string);
+	}
 }
 
 namespace variables
@@ -6479,6 +6495,11 @@ namespace variables
 			"quit",
 			"Shutdown the Game [Com_Quit_f]",
 			0x1DEE6107B26F8BB6
+		},
+		{
+			"reload_mods",
+			"Reload the shield mods",
+			0x6cb53357b4ef835c
 		}
 	};
 
