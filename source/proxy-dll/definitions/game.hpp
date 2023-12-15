@@ -644,6 +644,18 @@ namespace game
 		char padding_unk2[8];
 	};
 	
+	enum eModes : int32_t
+	{
+		MODE_ZOMBIES = 0x0,
+		MODE_MULTIPLAYER = 0x1,
+		MODE_CAMPAIGN = 0x2,
+		MODE_WARZONE = 0x3,
+		MODE_COUNT = 0x4,
+		MODE_INVALID = 0x4,
+		MODE_FIRST = 0x0,
+	};
+
+
 	//////////////////////////////////////////////////////////////////////////
 	//                               SYMBOLS                                //
 	//////////////////////////////////////////////////////////////////////////
@@ -703,6 +715,7 @@ namespace game
 
 	WEAK symbol<bool()> Com_IsInGame{ 0x14288FDB0_g };
 	WEAK symbol<bool()> Com_IsRunningUILevel{ 0x14288FDF0_g };
+	WEAK symbol<eModes()> Com_SessionMode_GetMode{ 0x14289EFF0_g };
 
 	WEAK symbol<int> keyCatchers{ 0x148A53F84_g };
 	WEAK symbol<PlayerKeyState> playerKeys{ 0x148A3EF80_g };
