@@ -655,6 +655,73 @@ namespace game
 		MODE_FIRST = 0x0,
 	};
 
+	enum consoleLabel_e : int32_t
+	{
+		CON_LABEL_TEMP = 0x0,
+		CON_LABEL_GFX = 0x2,
+		CON_LABEL_TASKMGR2 = 0x3,
+		CON_LABEL_LIVE = 0x4,
+		CON_LABEL_LIVE_XBOX = 0x5,
+		CON_LABEL_LIVE_PS4 = 0x6,
+		CON_LABEL_MATCHMAKING = 0x7,
+		CON_LABEL_DEMONWARE = 0x8,
+		CON_LABEL_LEADERBOARDS = 0x9,
+		CON_LABEL_LOBBY = 0x0A,
+		CON_LABEL_LOBBYHOST = 0x0B,
+		CON_LABEL_LOBBYCLIENT = 0x0C,
+		CON_LABEL_LOBBYVM = 0x0D,
+		CON_LABEL_MIGRATION = 0x0E,
+		CON_LABEL_IG_MIGRATION_Host = 0x0F,
+		CON_LABEL_IG_MIGRATION_Client = 0x10,
+		CON_LABEL_SCRIPTER = 0x11,
+		CON_LABEL_VM = 0x12,
+		CON_LABEL_DVAR = 0x13,
+		CON_LABEL_TOOL = 0x14,
+		CON_LABEL_ANIM = 0x15,
+		CON_LABEL_NETCHAN = 0x16,
+		CON_LABEL_BGCACHE = 0x17,
+		CON_LABEL_PM = 0x18,
+		CON_LABEL_MAPSWITCH = 0x19,
+		CON_LABEL_AI = 0x1A,
+		CON_LABEL_GADGET = 0x1B,
+		CON_LABEL_SOUND = 0x1C,
+		CON_LABEL_SNAPSHOT = 0x1D,
+		CON_LABEL_PLAYGO = 0x1E,
+		CON_LABEL_LUI = 0x1F,
+		CON_LABEL_LUA = 0x20,
+		CON_LABEL_VOIP = 0x21,
+		CON_LABEL_DEMO = 0x22,
+		CON_LABEL_DB = 0x23,
+		CON_LABEL_HTTP = 0x24,
+		CON_LABEL_DCACHE = 0x25,
+		CON_LABEL_MEM = 0x26,
+		CON_LABEL_CINEMATIC = 0x27,
+		CON_LABEL_DDL = 0x28,
+		CON_LABEL_STORAGE = 0x29,
+		CON_LABEL_STEAM = 0x2A,
+		CON_LABEL_CHKPTSAVE = 0x2B,
+		CON_LABEL_DLOG = 0x2C,
+		CON_LABEL_FILESHARE = 0x2D,
+		CON_LABEL_LPC = 0x2E,
+		CON_LABEL_MARKETING = 0x2F,
+		CON_LABEL_STORE = 0x30,
+		CON_LABEL_TESTING = 0x31,
+		CON_LABEL_LOOT = 0x32,
+		CON_LABEL_MATCHRECORDER = 0x33,
+		CON_LABEL_EXCHANGE = 0x34,
+		CON_LABEL_SCRIPTERROR = 0x35,
+		CON_LABEL_PLAYOFTHEMATCH = 0x36,
+		CON_LABEL_FILESYS = 0x37,
+		CON_LABEL_JSON = 0x38,
+		CON_LABEL_CUSTOMGAMES = 0x39,
+		CON_LABEL_GAMEPLAY = 0x3A,
+		CON_LABEL_STREAM = 0x3B,
+		CON_LABEL_XPAK = 0x3C,
+		CON_LABEL_AE = 0x3D,
+		CON_LABEL_STRINGTABLE = 0x3E,
+		CON_LABEL_COUNT = 0x3F
+	};
+
 
 	//////////////////////////////////////////////////////////////////////////
 	//                               SYMBOLS                                //
@@ -753,7 +820,12 @@ namespace game
 	WEAK symbol<VM_OP_FUNC> gVmOpJumpTable{ 0x144EED340_g };
 	WEAK symbol<uint32_t> gObjFileInfoCount{ 0x1482F76B0_g };
 	WEAK symbol<objFileInfo_t[SCRIPTINSTANCE_MAX][650]> gObjFileInfo{ 0x1482EFCD0_g };
+
+	WEAK symbol<bool(void* luaVM, const char* file)> Lua_CoD_LoadLuaFile{ 0x143962DF0_g };
+	WEAK symbol<int(byte type, BO4_AssetRef_t* name)> BG_Cache_RegisterAndGet{ 0x1405CEC20_g };
 	     
+	WEAK symbol<const char*> builtinLabels{ 0x144F11530_g };
+
 	WEAK symbol<void(BO4_AssetRef_t* cmdName, xcommand_t function, cmd_function_t* allocedCmd)> Cmd_AddCommandInternal{0x143CDEE80_g};
 	
 #define Cmd_AddCommand(name, function) \

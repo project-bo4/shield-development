@@ -148,6 +148,9 @@ namespace mods {
 		{
 			xassets::lua_file_header header{};
 
+			std::unordered_set<uint64_t> hooks{};
+			uint64_t noext_name{};
+			std::unordered_set<uint64_t> hooks_post{};
 			std::string data{};
 
 			auto* get_header()
@@ -408,7 +411,55 @@ namespace mods {
 					lua_file tmp{};
 					std::filesystem::path path_cfg = path_mb->value.GetString();
 					auto lua_file_path = path_cfg.is_absolute() ? path_cfg : (mod_path / path_cfg);
-					tmp.header.name = fnv1a::generate_hash_pattern(name_mb->value.GetString());
+					// it injects the name without the .lua and load the name with the .lua, good luck to replace with an unknown hash!
+					tmp.noext_name = fnv1a::generate_hash_pattern(name_mb->value.GetString());
+					tmp.header.name = fnv1a::generate_hash(".lua", tmp.noext_name);
+
+					auto hooks = member.FindMember("hooks_pre");
+
+					if (hooks != member.MemberEnd())
+					{
+						// no hooks might not be an error, to replace a script for example
+
+						if (!hooks->value.IsArray())
+						{
+							logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a bad luafile pre hook def, not an array for {}", mod_name, lua_file_path.string()));
+							return false;
+						}
+
+						for (auto& hook : hooks->value.GetArray())
+						{
+							if (!hook.IsString())
+							{
+								logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a bad luafile pre hook def, not a string for {}", mod_name, lua_file_path.string()));
+								return false;
+							}
+
+							tmp.hooks.insert(fnv1a::generate_hash_pattern(hook.GetString()));
+						}
+					}
+
+					auto hooks_post = member.FindMember("hooks_post");
+					
+					if (hooks_post != member.MemberEnd())
+					{
+						if (!hooks_post->value.IsArray())
+						{
+							logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a bad luafile post hook def, not an array for {}", mod_name, lua_file_path.string()));
+							return false;
+						}
+
+						for (auto& hook : hooks_post->value.GetArray())
+						{
+							if (!hook.IsString())
+							{
+								logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a bad luafile post hook def, not a string for {}", mod_name, lua_file_path.string()));
+								return false;
+							}
+
+							tmp.hooks_post.insert(fnv1a::generate_hash_pattern(hook.GetString()));
+						}
+					}
 
 					if (!utilities::io::read_file(lua_file_path.string(), &tmp.data))
 					{
@@ -416,7 +467,7 @@ namespace mods {
 						return false;
 					}
 
-					logger::write(logger::LOG_TYPE_DEBUG, std::format("mod {}: loaded lua file {} -> {:x}", mod_name, lua_file_path.string(), tmp.header.name));
+					logger::write(logger::LOG_TYPE_DEBUG, std::format("mod {}: loaded lua file {} -> x64:{:x}.lua ({:x})", mod_name, lua_file_path.string(), tmp.noext_name, tmp.header.name));
 					lua_files.emplace_back(tmp);
 				}
 				else if (!_strcmpi("stringtable", type_val))
@@ -676,6 +727,7 @@ namespace mods {
 
 	utilities::hook::detour db_find_xasset_header_hook;
 	utilities::hook::detour scr_gsc_obj_link_hook;
+	utilities::hook::detour hksl_loadfile_hook;
 
 	void* db_find_xasset_header_stub(xassets::XAssetType type, game::BO4_AssetRef_t* name, bool errorIfMissing, int waitTime)
 	{
@@ -719,6 +771,48 @@ namespace mods {
 		return scr_gsc_obj_link_hook.invoke<int>(inst, prime_obj, runScript);
 	}
 
+	int hksl_loadfile_stub(void* state, const char* filename)
+	{
+
+		uint64_t hash{};
+		if (!storage.lua_files.empty())
+		{
+			hash = fnv1a::generate_hash_pattern(filename);
+		}
+
+		for (auto& lua : storage.lua_files)
+		{
+			// we need to use the hash because filename is x64:HASH or unhashed
+
+			if (lua.hooks.find(hash) != lua.hooks.end())
+			{
+				std::string name = std::format("x64:{:x}.lua", lua.noext_name);
+				if (!game::Lua_CoD_LoadLuaFile(state, name.c_str()))
+				{
+					logger::write(logger::LOG_TYPE_ERROR, std::format("error when loading hook lua {} (pre)", name));
+				}
+			}
+		}
+
+		int load = hksl_loadfile_hook.invoke<int>(state, filename);
+
+		for (auto& lua : storage.lua_files)
+		{
+			// we need to use the hash because filename is x64:HASH or unhashed
+
+			if (lua.hooks_post.find(hash) != lua.hooks_post.end())
+			{
+				std::string name = std::format("x64:{:x}.lua", lua.noext_name);
+				if (!game::Lua_CoD_LoadLuaFile(state, name.c_str()))
+				{
+					logger::write(logger::LOG_TYPE_ERROR, std::format("error when loading hook lua {} (post)", name));
+				}
+			}
+		}
+
+		return load;
+	}
+
 	class component final : public component_interface
 	{
 	public:
@@ -728,6 +822,7 @@ namespace mods {
 			db_find_xasset_header_hook.create(0x142EB75B0_g, db_find_xasset_header_stub);
 
 			scr_gsc_obj_link_hook.create(0x142748F10_g, scr_gsc_obj_link_stub);
+			hksl_loadfile_hook.create(0x14375D6A0_g, hksl_loadfile_stub);
 
 			// register load mods command
 			Cmd_AddCommand("reload_mods", load_mods_cmd);

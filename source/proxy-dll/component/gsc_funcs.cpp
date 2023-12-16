@@ -479,6 +479,19 @@ namespace gsc_funcs
 				gsc_error("compiler::function_%llx not implemented", inst, false, hash);
 			}
 		}
+
+		void pre_cache_resource(game::scriptInstance_t inst)
+		{
+			game::BO4_AssetRef_t hashRef{};
+			byte type = (byte)(game::ScrVm_GetInt(inst, 0) & 0xFF);
+			uint64_t res = game::ScrVm_GetHash(&hashRef, inst, 1)->hash;
+
+			logger::write(logger::LOG_TYPE_DEBUG, "precaching resource type=%d/name=hash_%llx", type, res);
+
+			hashRef.hash = res;
+			hashRef.null = 0;
+			game::BG_Cache_RegisterAndGet(type, &hashRef);
+		}
 		
 		game::BO4_BuiltinFunctionDef custom_functions_gsc[] =
 		{
@@ -550,6 +563,13 @@ namespace gsc_funcs
 				.min_args = 1,
 				.max_args = 255,
 				.actionFunc = serious_custom_func,
+				.type = 0,
+			},
+			{ // PreCache(type, name)
+				.canonId = canon_hash("PreCacheResource"),
+				.min_args = 2,
+				.max_args = 2,
+				.actionFunc = pre_cache_resource,
 				.type = 0,
 			}
 		};

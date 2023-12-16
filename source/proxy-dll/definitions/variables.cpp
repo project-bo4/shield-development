@@ -3,17 +3,25 @@
 
 namespace fnv1a
 {
-	uint64_t generate_hash(const char* string)
+	uint64_t generate_hash(const char* string, uint64_t start)
 	{
-		uint64_t Result = 0xCBF29CE484222325;
+		uint64_t res = start;
 
-		for (uint64_t i = 0; i < strlen(string); i++)
+		for (const char* c = string; *c; c++)
 		{
-			Result ^= string[i];
-			Result *= 0x100000001B3;
+			if (*c == '\\')
+			{
+				res ^= '/';
+			}
+			else
+			{
+				res ^= tolower(*c);
+			}
+
+			res *= 0x100000001B3;
 		}
 
-		return (Result & 0x7FFFFFFFFFFFFFFF);
+		return res & 0x7FFFFFFFFFFFFFFF;
 	}
 
 	uint64_t generate_hash_pattern(const char* string)
@@ -21,12 +29,28 @@ namespace fnv1a
 		std::string_view v{ string };
 
 		// basic notations hash_123, file_123, script_123
-		if (!v.rfind("hash_", 0)) return std::strtoull(&string[5], nullptr, 16);
-		if (!v.rfind("file_", 0)) return std::strtoull(&string[5], nullptr, 16);
-		if (!v.rfind("script_", 0)) return std::strtoull(&string[7], nullptr, 16);
+		if (!v.rfind("hash_", 0)) return std::strtoull(&string[5], nullptr, 16) & 0x7FFFFFFFFFFFFFFF;
+		if (!v.rfind("file_", 0)) return std::strtoull(&string[5], nullptr, 16) & 0x7FFFFFFFFFFFFFFF;
+		if (!v.rfind("script_", 0)) return std::strtoull(&string[7], nullptr, 16) & 0x7FFFFFFFFFFFFFFF;
 
 		// lua notation x64:123
-		if (!v.rfind("x64:", 0)) return std::strtoull(&string[4], nullptr, 16);
+		if (!v.rfind("x64:", 0))
+		{
+			if (v.length() <= 0x18 && v.ends_with(".lua"))
+			{
+				// x64:123456789abcdf.lua
+				// 
+				// extract hash value
+				char tmpbuffer[0x17] = {};
+
+				memcpy(tmpbuffer, string + 4, v.length() - 8);
+
+				// gen the hash and add .lua add the end
+				return generate_hash(".lua", std::strtoull(&string[4], nullptr, 16) & 0x7FFFFFFFFFFFFFFF);
+			}
+
+			return std::strtoull(&string[4], nullptr, 16) & 0x7FFFFFFFFFFFFFFF;
+		}
 		
 		// unknown, use hashed value
 		return generate_hash(string);
