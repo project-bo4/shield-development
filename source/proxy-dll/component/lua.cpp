@@ -103,7 +103,6 @@ namespace lua {
 
 		// in boiii, need to be added, not in bo4?
 		// - 0x141FD3220_g engine_openurl
-		// - 0x141D32390_g io_tostring
 		// - 0x141D34190_g debug
 			
 		utilities::hook::jump(0x1437358D0_g, lua_unsafe_function_stub); // base_loadfile
@@ -119,7 +118,7 @@ namespace lua {
 		utilities::hook::jump(0x14373EE90_g, lua_unsafe_function_stub); // os_sleep
 		utilities::hook::jump(0x14373ED30_g, lua_unsafe_function_stub); // os_execute
 		utilities::hook::jump(0x14373ED90_g, lua_unsafe_function_stub); // os_getenv
-		
+
 		utilities::hook::jump(0x14373D170_g, lua_unsafe_function_stub); // io_close
 		utilities::hook::jump(0x14373D060_g, lua_unsafe_function_stub); // io_close_file
 		utilities::hook::jump(0x14373D030_g, lua_unsafe_function_stub); // io_flush
@@ -136,6 +135,7 @@ namespace lua {
 		utilities::hook::jump(0x14373E160_g, lua_unsafe_function_stub); // io_popen
 		utilities::hook::jump(0x14373DE40_g, lua_unsafe_function_stub); // io_seek_file
 		utilities::hook::jump(0x14373DF80_g, lua_unsafe_function_stub); // io_setvbuf
+		utilities::hook::jump(0x14373E0A0_g, lua_unsafe_function_stub); // io_tostring
 		utilities::hook::jump(0x143735360_g, lua_unsafe_function_stub); // serialize_persist
 		utilities::hook::jump(0x143735590_g, lua_unsafe_function_stub); // serialize_unpersist
 

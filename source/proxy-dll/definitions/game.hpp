@@ -823,7 +823,8 @@ namespace game
 
 	WEAK symbol<bool(void* luaVM, const char* file)> Lua_CoD_LoadLuaFile{ 0x143962DF0_g };
 	WEAK symbol<int(byte type, BO4_AssetRef_t* name)> BG_Cache_RegisterAndGet{ 0x1405CEC20_g };
-	     
+	WEAK symbol<byte(const char* name)> BG_Cache_GetTypeIndex{ 0x1405CDBD0_g };
+	
 	WEAK symbol<const char*> builtinLabels{ 0x144F11530_g };
 
 	WEAK symbol<void(BO4_AssetRef_t* cmdName, xcommand_t function, cmd_function_t* allocedCmd)> Cmd_AddCommandInternal{0x143CDEE80_g};

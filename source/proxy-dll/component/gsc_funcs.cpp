@@ -2,6 +2,7 @@
 #include "gsc_funcs.hpp"
 #include "gsc_custom.hpp"
 #include "definitions/game.hpp"
+#include "definitions/xassets.hpp"
 #include "loader/component_loader.hpp"
 #include "component/scheduler.hpp"
 
@@ -483,7 +484,28 @@ namespace gsc_funcs
 		void pre_cache_resource(game::scriptInstance_t inst)
 		{
 			game::BO4_AssetRef_t hashRef{};
-			byte type = (byte)(game::ScrVm_GetInt(inst, 0) & 0xFF);
+
+			byte type;
+			if (game::ScrVm_GetType(inst, 0) == game::TYPE_STRING)
+			{
+				type = game::BG_Cache_GetTypeIndex(game::ScrVm_GetString(inst, 0));
+			}
+			else if (game::ScrVm_GetType(inst, 0) == game::TYPE_INTEGER)
+			{
+				type = (byte)(game::ScrVm_GetInt(inst, 0) & 0xFF);
+			}
+			else
+			{
+				gsc_error("bad param type for PreCache, excepted int or string", inst, false);
+				return;
+			}
+
+			if (!type || type >= xassets::BG_CACHE_TYPE_COUNT)
+			{
+				gsc_error("bad bgcache type for PreCache", inst, false);
+				return;
+			}
+
 			uint64_t res = game::ScrVm_GetHash(&hashRef, inst, 1)->hash;
 
 			logger::write(logger::LOG_TYPE_DEBUG, "precaching resource type=%d/name=hash_%llx", type, res);
@@ -566,7 +588,7 @@ namespace gsc_funcs
 				.type = 0,
 			},
 			{ // PreCache(type, name)
-				.canonId = canon_hash("PreCacheResource"),
+				.canonId = canon_hash("PreCache"),
 				.min_args = 2,
 				.max_args = 2,
 				.actionFunc = pre_cache_resource,
