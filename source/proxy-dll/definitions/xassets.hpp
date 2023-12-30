@@ -303,6 +303,23 @@ namespace xassets
 		BG_CACHE_TYPE_COUNT
 	};
 
+	struct bg_cache_info_def
+	{
+		BGCacheTypes type;
+		game::BO4_AssetRef_t name;
+		uint64_t asset;
+	};
+
+	struct bg_cache_info
+	{
+		game::BO4_AssetRef_t name{};
+		bg_cache_info_def* def{};
+		int defCount{};
+	};
+
+
+	
+	WEAK game::symbol<void(bg_cache_info* cache, int32_t flags)> Demo_AddBGCacheAndRegister{ 0x1405CF5A0_g };
 	WEAK game::symbol<int(BGCacheTypes type, game::BO4_AssetRef_t* name)> BG_Cache_RegisterAndGet{ 0x1405CEC20_g };
 	WEAK game::symbol<BGCacheTypes(const char* name)> BG_Cache_GetTypeIndexInternal{ 0x1405CDBD0_g };
 	BGCacheTypes BG_Cache_GetTypeIndex(const char* name);

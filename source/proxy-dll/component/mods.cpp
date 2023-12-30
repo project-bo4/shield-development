@@ -196,6 +196,15 @@ namespace mods {
 			std::vector<lua_file> lua_files{};
 			std::vector<string_table_file> csv_files{};
 			std::vector<cache_entry> cache_entries{};
+			std::vector<xassets::bg_cache_info_def> custom_cache_entries{};
+
+			xassets::bg_cache_info custom_cache
+			{
+				.name
+				{
+					.hash = (int64_t)fnv1a::generate_hash("shield_cache") // 2c4f76fcf5cfbebd
+				}
+			};
 
 			~mod_storage()
 			{
@@ -229,6 +238,53 @@ namespace mods {
 				allocated_strings.emplace_back(str);
 
 				return str;
+			}
+
+			void sync_cache_entries()
+			{
+				custom_cache.defCount = 0;
+				custom_cache.def = nullptr;
+				custom_cache_entries.clear();
+
+				if (!cache_entries.size())
+				{
+					return; // nothing to sync
+				}
+
+				game::dvar_t* sv_mapname = dvars::find_dvar("sv_mapname");
+				game::dvar_t* g_gametype = dvars::find_dvar("g_gametype");
+
+				if (!sv_mapname || !g_gametype)
+				{
+					logger::write(logger::LOG_TYPE_ERROR, "Can't find bgcache dvars");
+					return;
+				}
+
+				std::string mapname = dvars::get_value_string(sv_mapname, &sv_mapname->value->current);
+				std::string gametype = dvars::get_value_string(g_gametype, &g_gametype->value->current);
+				game::eModes mode = game::Com_SessionMode_GetMode();
+
+				uint64_t mapname_hash = fnv1a::generate_hash(mapname.data());
+				uint64_t gametype_hash = fnv1a::generate_hash(gametype.data());
+
+				int count = 0;
+				for (auto& entry : cache_entries)
+				{
+					if (
+						entry.hooks_modes.find(mode) != entry.hooks_modes.end()
+						|| entry.hooks_map.find(mapname_hash) != entry.hooks_map.end()
+						|| entry.hooks_gametype.find(gametype_hash) != entry.hooks_gametype.end()
+						)
+					{
+						auto& ref = custom_cache_entries.emplace_back();
+						ref.type = entry.type;
+						ref.name.hash = entry.name.hash;
+						count++;
+					}
+				}
+				custom_cache.def = custom_cache_entries.data();
+				custom_cache.defCount = (int)custom_cache_entries.size();
+				logger::write(logger::LOG_TYPE_DEBUG, "sync %d custom bgcache entries", count);
 			}
 
 			void* get_xasset(xassets::XAssetType type, uint64_t name)
@@ -1007,47 +1063,12 @@ namespace mods {
 
 	void bg_cache_sync_stub()
 	{
+		storage.sync_cache_entries();
+
+		xassets::Demo_AddBGCacheAndRegister(&storage.custom_cache, 0x16000); 
+		
 		// sync default
 		bg_cache_sync_hook.invoke<void>();
-
-		if (!storage.cache_entries.size())
-		{
-			return; // nothing to check
-		}
-
-		game::dvar_t* sv_mapname = dvars::find_dvar("sv_mapname");
-		game::dvar_t* g_gametype = dvars::find_dvar("g_gametype");
-
-		if (!sv_mapname || !g_gametype)
-		{
-			logger::write(logger::LOG_TYPE_ERROR, "Can't find bgcache dvars");
-			return;
-		}
-
-		std::string mapname = dvars::get_value_string(sv_mapname, &sv_mapname->value->current);
-		std::string gametype = dvars::get_value_string(g_gametype, &g_gametype->value->current);
-		game::eModes mode = game::Com_SessionMode_GetMode();
-
-		logger::write(logger::LOG_TYPE_DEBUG, "loading bgcache for %s/%s/%s", mapname.data(), gametype.data(), game::Com_SessionMode_GetAbbreviationForMode(mode));
-
-		uint64_t mapname_hash = fnv1a::generate_hash(mapname.data());
-		uint64_t gametype_hash = fnv1a::generate_hash(gametype.data());
-
-		int count = 0;
-		for (auto& entry : storage.cache_entries)
-		{
-			if (
-				entry.hooks_modes.find(mode) != entry.hooks_modes.end()
-				|| entry.hooks_map.find(mapname_hash) != entry.hooks_map.end()
-				|| entry.hooks_gametype.find(gametype_hash) != entry.hooks_gametype.end()
-				)
-			{
-				logger::write(logger::LOG_TYPE_DEBUG, "register bgcache entry: hash_%llx(%s)", entry.name.hash, xassets::BG_Cache_GetTypeName(entry.type));
-				xassets::BG_Cache_RegisterAndGet(entry.type, &entry.name);
-				count++;
-			}
-		}
-		logger::write(logger::LOG_TYPE_DEBUG, "registered %d bgcache entries", count);
 	}
 
 	class component final : public component_interface
