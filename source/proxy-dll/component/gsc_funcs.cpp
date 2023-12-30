@@ -2,6 +2,7 @@
 #include "gsc_funcs.hpp"
 #include "gsc_custom.hpp"
 #include "definitions/game.hpp"
+#include "definitions/game_runtime_errors.hpp"
 #include "definitions/xassets.hpp"
 #include "loader/component_loader.hpp"
 #include "component/scheduler.hpp"
@@ -33,7 +34,7 @@ namespace gsc_funcs
 		vsprintf_s(buffer[inst], message, va);
 		va_end(va);
 
-		game::ScrVm_Error(custom_error_id, inst, buffer[inst], terminal);
+		game::ScrVm_Error(game::runtime_errors::custom_error_id, inst, buffer[inst], terminal);
 	}
 
 	namespace
@@ -164,7 +165,7 @@ namespace gsc_funcs
 			}
 				break;
 			default:
-				gsc_error("Call of ShieldLog with unknown type: %d", inst, false, type);
+				gsc_error("Call of ShieldLog with unknown type: %s", inst, false, game::var_typename[type]);
 				break;
 			}
 		}
@@ -488,7 +489,7 @@ namespace gsc_funcs
 			byte type;
 			if (game::ScrVm_GetType(inst, 0) == game::TYPE_STRING)
 			{
-				type = game::BG_Cache_GetTypeIndex(game::ScrVm_GetString(inst, 0));
+				type = xassets::BG_Cache_GetTypeIndex(game::ScrVm_GetString(inst, 0));
 			}
 			else if (game::ScrVm_GetType(inst, 0) == game::TYPE_INTEGER)
 			{
@@ -496,7 +497,7 @@ namespace gsc_funcs
 			}
 			else
 			{
-				gsc_error("bad param type for PreCache, excepted int or string", inst, false);
+				gsc_error("bad param type for PreCache, excepted int or string, received %s", inst, false, game::var_typename[game::ScrVm_GetType(inst, 0)]);
 				return;
 			}
 
@@ -512,7 +513,7 @@ namespace gsc_funcs
 
 			hashRef.hash = res;
 			hashRef.null = 0;
-			game::BG_Cache_RegisterAndGet(type, &hashRef);
+			xassets::BG_Cache_RegisterAndGet((xassets::BGCacheTypes)type, &hashRef);
 		}
 		
 		game::BO4_BuiltinFunctionDef custom_functions_gsc[] =
@@ -853,9 +854,13 @@ namespace gsc_funcs
 			break;
 		default:
 			// put custom message for our id
-			if (code == custom_error_id)
+			if (code == game::runtime_errors::custom_error_id)
 			{
 				game::scrVarPub[inst].error_message = unused;
+			}
+			else
+			{
+				game::scrVarPub[inst].error_message = game::runtime_errors::get_error_message(code);
 			}
 			break;
 		}

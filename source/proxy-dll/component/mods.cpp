@@ -7,6 +7,7 @@
 #include "gsc_funcs.hpp"
 #include "gsc_custom.hpp"
 #include "loader/component_loader.hpp"
+#include "dvars.hpp"
 
 #include <utilities/io.hpp>
 #include <utilities/hook.hpp>
@@ -175,6 +176,14 @@ namespace mods {
 				return &header;
 			}
 		};
+		struct cache_entry
+		{
+			game::BO4_AssetRef_t name{};
+			xassets::BGCacheTypes type{};
+			std::unordered_set<game::eModes> hooks_modes{};
+			std::unordered_set<uint64_t> hooks_map{};
+			std::unordered_set<uint64_t> hooks_gametype{};
+		};
 
 
 		class mod_storage
@@ -186,6 +195,7 @@ namespace mods {
 			std::vector<raw_file> raw_files{};
 			std::vector<lua_file> lua_files{};
 			std::vector<string_table_file> csv_files{};
+			std::vector<cache_entry> cache_entries{};
 
 			~mod_storage()
 			{
@@ -202,6 +212,7 @@ namespace mods {
 				gsc_files.clear();
 				lua_files.clear();
 				csv_files.clear();
+				cache_entries.clear();
 
 				for (char* str : allocated_strings)
 				{
@@ -499,7 +510,29 @@ namespace mods {
 
 					std::stringstream stream{ tmp.data };
 
-					doc.Load(stream, rapidcsv::LabelParams(-1, -1));
+					auto separator_mb = member.FindMember("separator");
+
+					char sep = ',';
+
+					if (separator_mb != member.MemberEnd())
+					{
+						if (!separator_mb->value.IsString())
+						{
+							logger::write(logger::LOG_TYPE_ERROR, std::format("bad separator type for stringtable file {} for mod {}", stringtable_file_path.string(), mod_name));
+							return false;
+						}
+						const char* sepval = separator_mb->value.GetString();
+
+						if (!sepval[0] || sepval[1])
+						{
+							logger::write(logger::LOG_TYPE_ERROR, std::format("bad separator for stringtable file {} for mod {}, a separator should contain only one character", stringtable_file_path.string(), mod_name));
+							return false;
+						}
+
+						sep = *sepval;
+					}
+
+					doc.Load(stream, rapidcsv::LabelParams(-1, -1), rapidcsv::SeparatorParams(sep));
 
 					size_t rows_count_tmp = doc.GetRowCount();
 					tmp.header.rows_count = rows_count_tmp != 0 ? (int32_t)(rows_count_tmp - 1) : 0;
@@ -607,7 +640,7 @@ namespace mods {
 						}
 					}
 					
-					logger::write(logger::LOG_TYPE_DEBUG, std::format("mod {}: loaded stringtable file {} -> {:x}", mod_name, stringtable_file_path.string(), tmp.header.name));
+					logger::write(logger::LOG_TYPE_DEBUG, std::format("mod {}: loaded stringtable file {} -> {:x} ({}x{})", mod_name, stringtable_file_path.string(), tmp.header.name, tmp.header.columns_count, tmp.header.rows_count));
 					csv_files.emplace_back(tmp);
 				}
 				else
@@ -615,6 +648,142 @@ namespace mods {
 					logger::write(logger::LOG_TYPE_ERROR, std::format("mod {} is load data member with an unknown type '{}'", mod_name, type_val));
 					return false;
 				}
+
+				return true;
+			}
+
+			bool read_cache_entry(rapidjson::Value& member, const char* mod_name, const std::filesystem::path& mod_path)
+			{
+				auto type = member.FindMember("type");
+
+				if (type == member.MemberEnd() || !type->value.IsString())
+				{
+					logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a cache member without a valid type", mod_name));
+					return false;
+				}
+
+				auto name = member.FindMember("name");
+
+				if (name == member.MemberEnd() || !name->value.IsString())
+				{
+					logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a cache member without a valid name", mod_name));
+					return false;
+				}
+
+				const char* name_val = name->value.GetString();
+				const char* type_val = type->value.GetString();
+
+				xassets::BGCacheTypes bgtype = xassets::BG_Cache_GetTypeIndex(type_val);
+
+				if (!bgtype)
+				{
+					logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a cache member with a bad type: {}", mod_name, type_val));
+					return false;
+				}
+
+				cache_entry tmp{};
+
+				tmp.name.hash = fnv1a::generate_hash_pattern(name_val);
+				tmp.type = bgtype;
+
+				auto hook_map = member.FindMember("map");
+				auto hook_mode = member.FindMember("mode");
+				auto hook_gametype = member.FindMember("gametype");
+
+				if (hook_map != member.MemberEnd())
+				{
+					if (hook_map->value.IsArray())
+					{
+						auto data_array = hook_map->value.GetArray();
+
+						for (rapidjson::Value& hookmember : data_array)
+						{
+							if (!hookmember.IsString())
+							{
+								logger::write(logger::LOG_TYPE_ERROR, std::format("mod {} is containing a cache member with a bad map hook", mod_name));
+								continue;
+							}
+							tmp.hooks_map.insert(fnv1a::generate_hash(hookmember.GetString()));
+						}
+					}
+					else if (hook_map->value.IsString())
+					{
+						tmp.hooks_map.insert(fnv1a::generate_hash(hook_map->value.GetString()));
+					}
+					else
+					{
+						logger::write(logger::LOG_TYPE_ERROR, std::format("mod {} is containing a cache member with a bad map hook", mod_name));
+						return false;
+					}
+				}
+
+				if (hook_mode != member.MemberEnd())
+				{
+					if (hook_mode->value.IsArray())
+					{
+						auto data_array = hook_mode->value.GetArray();
+
+						for (rapidjson::Value& hookmember : data_array)
+						{
+							if (!hookmember.IsString())
+							{
+								logger::write(logger::LOG_TYPE_ERROR, std::format("mod {} is containing a cache member with a bad mode hook", mod_name));
+								continue;
+							}
+							game::eModes loaded = game::Com_SessionMode_GetModeForAbbreviation(hookmember.GetString());
+							if (loaded == game::eModes::MODE_COUNT)
+							{
+								logger::write(logger::LOG_TYPE_ERROR, std::format("mod {} is containing a cache member with a bad mode hook", mod_name));
+								continue;
+							}
+							tmp.hooks_modes.insert(loaded);
+						}
+					}
+					else if (hook_mode->value.IsString())
+					{
+						game::eModes loaded = game::Com_SessionMode_GetModeForAbbreviation(hook_mode->value.GetString());
+						if (loaded == game::eModes::MODE_COUNT)
+						{
+							logger::write(logger::LOG_TYPE_ERROR, std::format("mod {} is containing a cache member with a bad mode hook", mod_name));
+							return false;
+						}
+						tmp.hooks_modes.insert(loaded);
+					}
+					else
+					{
+						logger::write(logger::LOG_TYPE_ERROR, std::format("mod {} is containing a cache member with a bad mode hook", mod_name));
+						return false;
+					}
+				}
+
+				if (hook_gametype != member.MemberEnd())
+				{
+					if (hook_gametype->value.IsArray())
+					{
+						auto data_array = hook_gametype->value.GetArray();
+
+						for (rapidjson::Value& hookmember : data_array)
+						{
+							if (!hookmember.IsString())
+							{
+								logger::write(logger::LOG_TYPE_ERROR, std::format("mod {} is containing a cache member with a bad gametype hook", mod_name));
+								continue;
+							}
+							tmp.hooks_gametype.insert(fnv1a::generate_hash(hookmember.GetString()));
+						}
+					}
+					else if (hook_gametype->value.IsString())
+					{
+						tmp.hooks_gametype.insert(fnv1a::generate_hash(hook_gametype->value.GetString()));
+					}
+					else
+					{
+						logger::write(logger::LOG_TYPE_ERROR, std::format("mod {} is containing a cache member with a bad gametype hook", mod_name));
+						return false;
+					}
+				}
+
+				cache_entries.push_back(tmp);
 
 				return true;
 			}
@@ -686,6 +855,27 @@ namespace mods {
 							}
 
 							if (!read_data_entry(member, mod_name, mod_path))
+							{
+								mod_errors++;
+							}
+						}
+					}
+					auto cache_member = info.FindMember("cache");
+
+					if (cache_member != info.MemberEnd() && cache_member->value.IsArray())
+					{
+						auto data_array = cache_member->value.GetArray();
+
+						for (rapidjson::Value& member : data_array)
+						{
+							if (!member.IsObject())
+							{
+								logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a bad cache member", mod_name));
+								mod_errors++;
+								continue;
+							}
+
+							if (!read_cache_entry(member, mod_name, mod_path))
 							{
 								mod_errors++;
 							}
@@ -813,24 +1003,69 @@ namespace mods {
 		return load;
 	}
 
+	utilities::hook::detour bg_cache_sync_hook;
+
+	void bg_cache_sync_stub()
+	{
+		// sync default
+		bg_cache_sync_hook.invoke<void>();
+
+		if (!storage.cache_entries.size())
+		{
+			return; // nothing to check
+		}
+
+		game::dvar_t* sv_mapname = dvars::find_dvar("sv_mapname");
+		game::dvar_t* g_gametype = dvars::find_dvar("g_gametype");
+
+		if (!sv_mapname || !g_gametype)
+		{
+			logger::write(logger::LOG_TYPE_ERROR, "Can't find bgcache dvars");
+			return;
+		}
+
+		std::string mapname = dvars::get_value_string(sv_mapname, &sv_mapname->value->current);
+		std::string gametype = dvars::get_value_string(g_gametype, &g_gametype->value->current);
+		game::eModes mode = game::Com_SessionMode_GetMode();
+
+		logger::write(logger::LOG_TYPE_DEBUG, "loading bgcache for %s/%s/%s", mapname.data(), gametype.data(), game::Com_SessionMode_GetAbbreviationForMode(mode));
+
+		uint64_t mapname_hash = fnv1a::generate_hash(mapname.data());
+		uint64_t gametype_hash = fnv1a::generate_hash(gametype.data());
+
+		int count = 0;
+		for (auto& entry : storage.cache_entries)
+		{
+			if (
+				entry.hooks_modes.find(mode) != entry.hooks_modes.end()
+				|| entry.hooks_map.find(mapname_hash) != entry.hooks_map.end()
+				|| entry.hooks_gametype.find(gametype_hash) != entry.hooks_gametype.end()
+				)
+			{
+				logger::write(logger::LOG_TYPE_DEBUG, "register bgcache entry: hash_%llx(%s)", entry.name.hash, xassets::BG_Cache_GetTypeName(entry.type));
+				xassets::BG_Cache_RegisterAndGet(entry.type, &entry.name);
+				count++;
+			}
+		}
+		logger::write(logger::LOG_TYPE_DEBUG, "registered %d bgcache entries", count);
+	}
+
 	class component final : public component_interface
 	{
 	public:
 		void post_unpack() override
 		{
+			storage.load_mods();
+
 			// custom assets loading
-			db_find_xasset_header_hook.create(0x142EB75B0_g, db_find_xasset_header_stub);
+			db_find_xasset_header_hook.create(xassets::DB_FindXAssetHeader.get(), db_find_xasset_header_stub);
 
 			scr_gsc_obj_link_hook.create(0x142748F10_g, scr_gsc_obj_link_stub);
 			hksl_loadfile_hook.create(0x14375D6A0_g, hksl_loadfile_stub);
+			bg_cache_sync_hook.create(0x1405CE0B0_g, bg_cache_sync_stub);
 
 			// register load mods command
 			Cmd_AddCommand("reload_mods", load_mods_cmd);
-		}
-
-		void pre_start() override
-		{
-			storage.load_mods();
 		}
 	};
 }

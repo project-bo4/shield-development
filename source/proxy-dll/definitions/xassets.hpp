@@ -302,4 +302,11 @@ namespace xassets
 		BG_CACHE_TYPE_REQUIRES_IMPLEMENTS = 39,
 		BG_CACHE_TYPE_COUNT
 	};
+
+	WEAK game::symbol<int(BGCacheTypes type, game::BO4_AssetRef_t* name)> BG_Cache_RegisterAndGet{ 0x1405CEC20_g };
+	WEAK game::symbol<BGCacheTypes(const char* name)> BG_Cache_GetTypeIndexInternal{ 0x1405CDBD0_g };
+	BGCacheTypes BG_Cache_GetTypeIndex(const char* name);
+	const char* BG_Cache_GetTypeName(BGCacheTypes type);
+
+	WEAK game::symbol<xasset_header(XAssetType type, game::BO4_AssetRef_t* name, bool errorIfMissing, int waittime)> DB_FindXAssetHeader{ 0x142EB75B0_g };
 }

@@ -93,12 +93,12 @@ namespace game
 		int32_t fixup_offset;
 		int32_t globalvar_offset;
 		int32_t script_size;
-		int32_t ukn4c_offset;
+		int32_t requires_implements_offset;
 		int32_t ukn50;
 		int32_t ukn54;
 		uint16_t include_count;
 		byte ukn5a;
-		byte ukn4c_count;
+		byte requires_implements_count;
 
 		inline GSC_EXPORT_ITEM* get_exports()
 		{
@@ -183,7 +183,8 @@ namespace game
 		TYPE_REMOVED_THREAD = 0x19,
 		TYPE_FREE = 0x1a,
 		TYPE_THREAD_LIST = 0x1b,
-		TYPE_ENT_LIST = 0x1c
+		TYPE_ENT_LIST = 0x1c,
+		TYPE_COUNT
 	};
 
 
@@ -783,6 +784,8 @@ namespace game
 	WEAK symbol<bool()> Com_IsInGame{ 0x14288FDB0_g };
 	WEAK symbol<bool()> Com_IsRunningUILevel{ 0x14288FDF0_g };
 	WEAK symbol<eModes()> Com_SessionMode_GetMode{ 0x14289EFF0_g };
+	WEAK symbol<eModes(const char* str)> Com_SessionMode_GetModeForAbbreviation{ 0x14289F000_g };
+	WEAK symbol<const char*(eModes mode)> Com_SessionMode_GetAbbreviationForMode{0x14289EC70_g};
 
 	WEAK symbol<int> keyCatchers{ 0x148A53F84_g };
 	WEAK symbol<PlayerKeyState> playerKeys{ 0x148A3EF80_g };
@@ -821,14 +824,16 @@ namespace game
 	WEAK symbol<uint32_t> gObjFileInfoCount{ 0x1482F76B0_g };
 	WEAK symbol<objFileInfo_t[SCRIPTINSTANCE_MAX][650]> gObjFileInfo{ 0x1482EFCD0_g };
 
+	// lua functions
 	WEAK symbol<bool(void* luaVM, const char* file)> Lua_CoD_LoadLuaFile{ 0x143962DF0_g };
-	WEAK symbol<int(byte type, BO4_AssetRef_t* name)> BG_Cache_RegisterAndGet{ 0x1405CEC20_g };
-	WEAK symbol<byte(const char* name)> BG_Cache_GetTypeIndex{ 0x1405CDBD0_g };
 	
+	// console labels
 	WEAK symbol<const char*> builtinLabels{ 0x144F11530_g };
+	// gsc types
+	WEAK symbol<const char*> var_typename{ 0x144EED240_g };
 
 	WEAK symbol<void(BO4_AssetRef_t* cmdName, xcommand_t function, cmd_function_t* allocedCmd)> Cmd_AddCommandInternal{0x143CDEE80_g};
-	
+
 #define Cmd_AddCommand(name, function) \
     static game::cmd_function_t __cmd_func_##function;  \
     game::BO4_AssetRef_t __cmd_func_name_##function { (int64_t)fnv1a::generate_hash(name), 0 }; \

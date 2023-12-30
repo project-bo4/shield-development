@@ -36,11 +36,21 @@ namespace lua {
 		hksi_lual_error_hook.invoke<void>(state, "%s", buffer);
 	}
 
+	void ui_interface_error(const char* error)
+	{
+		logger::write(logger::LOG_TYPE_ERROR, "[ui_interface_error] %s", error);
+	}
+
 	void print_out(logger::type type, game::consoleLabel_e label, const char* info)
 	{
-		char buffer[0x800];
+		size_t len = std::strlen(info);
 
-		int e;
+		while (len && info[len - 1] == '\n')
+		{
+			len--;
+		}
+
+		std::string buff{ info, len };
 
 		if (label != game::CON_LABEL_TEMP)
 		{
@@ -55,32 +65,26 @@ namespace lua {
 				label_str = "INVALID";
 			}
 
-			e = sprintf_s(buffer, "[lua] %s - %s", label_str, info);
+			logger::write(type, std::format("[lua] {} - {}", label_str, buff));
+
 		}
 		else
 		{
 			// no label
-			e = sprintf_s(buffer, "[lua] %s", info);
+			logger::write(type, std::format("[lua] {}", buff));
 		}
-
-		if (e > 0 && buffer[e - 1] == '\n')
-		{
-			buffer[e - 1] = 0; // remove end new line
-		}
-
-		std::string str{ buffer };
-
-		logger::write(type, str);
 	}
 
 	void print_info(game::consoleLabel_e label, const char* info)
 	{
 		print_out(logger::LOG_TYPE_INFO, label, info);
 	}
+
 	void print_warning(game::consoleLabel_e label, const char* info)
 	{
 		print_out(logger::LOG_TYPE_WARN, label, info);
 	}
+
 	void print_error(game::consoleLabel_e label, const char* info)
 	{
 		print_out(logger::LOG_TYPE_ERROR, label, info);
@@ -159,6 +163,7 @@ namespace lua {
 			if (utilities::json_config::ReadBoolean("lua", "error", false))
 			{
 				hksi_lual_error_hook.create(0x143757780_g, hksi_lual_error_stub);
+				utilities::hook::jump(0x1439B4CF0_g, ui_interface_error);
 				lual_error_hook.create(0x14375D410_g, lual_error_stub);
 				utilities::hook::jump(0x143A96E00_g, print_error);
 				utilities::hook::jump(0x143A96E30_g, print_warning);
