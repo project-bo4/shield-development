@@ -176,6 +176,20 @@ namespace mods {
 				return &header;
 			}
 		};
+		struct localize
+		{
+			xassets::localize_entry_header header{};
+
+			std::string str{};
+
+			auto* get_header()
+			{
+				header.string = str.data();
+
+				return &header;
+			}
+
+		};
 		struct cache_entry
 		{
 			game::BO4_AssetRef_t name{};
@@ -195,6 +209,7 @@ namespace mods {
 			std::vector<raw_file> raw_files{};
 			std::vector<lua_file> lua_files{};
 			std::vector<string_table_file> csv_files{};
+			std::vector<localize> localizes{};
 			std::vector<cache_entry> cache_entries{};
 			std::vector<xassets::bg_cache_info_def> custom_cache_entries{};
 
@@ -221,6 +236,7 @@ namespace mods {
 				gsc_files.clear();
 				lua_files.clear();
 				csv_files.clear();
+				localizes.clear();
 				cache_entries.clear();
 
 				for (char* str : allocated_strings)
@@ -321,6 +337,14 @@ namespace mods {
 					auto it = std::find_if(csv_files.begin(), csv_files.end(), [name](const string_table_file& file) { return file.header.name == name; });
 
 					if (it == csv_files.end()) return nullptr;
+
+					return it->get_header();
+				}
+				case xassets::ASSET_TYPE_LOCALIZE_ENTRY:
+				{
+					auto it = std::find_if(localizes.begin(), localizes.end(), [name](const localize& file) { return file.header.name == name; });
+
+					if (it == localizes.end()) return nullptr;
 
 					return it->get_header();
 				}
@@ -460,6 +484,27 @@ namespace mods {
 
 					logger::write(logger::LOG_TYPE_DEBUG, std::format("mod {}: loaded raw file {} -> {:x}", mod_name, raw_file_path.string(), tmp.header.name));
 					raw_files.emplace_back(tmp);
+				}
+				else if (!_strcmpi("localizeentry", type_val))
+				{
+					auto name_mb = member.FindMember("name");
+					auto value_mb = member.FindMember("value");
+
+					if (
+						name_mb == member.MemberEnd() || value_mb == member.MemberEnd()
+						|| !name_mb->value.IsString() || !value_mb->value.IsString()
+						)
+					{
+						logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a bad localized entry def, missing/bad name or value", mod_name));
+						return false;
+					}
+
+					localize tmp{};
+					tmp.str = value_mb->value.GetString();
+					tmp.header.name = fnv1a::generate_hash_pattern(name_mb->value.GetString());
+
+					logger::write(logger::LOG_TYPE_DEBUG, std::format("mod {}: loaded localized entry {:x}", mod_name, tmp.header.name));
+					localizes.emplace_back(tmp);
 				}
 				else if (!_strcmpi("luafile", type_val))
 				{

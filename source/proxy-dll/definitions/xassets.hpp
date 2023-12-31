@@ -29,6 +29,11 @@ namespace xassets
 		byte* buffer{};
 	};
 
+	struct localize_entry_header {
+		const char* string = "";
+		uint64_t name{};
+		uint64_t namepad{};
+	};
 
 	union stringtable_cell_value
 	{
@@ -80,6 +85,7 @@ namespace xassets
 		lua_file_header* lua_file;
 		scriptparsetree_header* scriptparsetree;
 		stringtable_header* stringtable;
+		localize_entry_header* localize;
 	};
 
 	enum XAssetType : byte
