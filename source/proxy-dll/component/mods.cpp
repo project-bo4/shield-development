@@ -211,6 +211,7 @@ namespace mods {
 			std::vector<string_table_file> csv_files{};
 			std::vector<localize> localizes{};
 			std::vector<cache_entry> cache_entries{};
+			std::unordered_map<int64_t, int64_t> assets_redirects[xassets::ASSET_TYPE_COUNT] = {};
 			std::vector<xassets::bg_cache_info_def> custom_cache_entries{};
 
 			xassets::bg_cache_info custom_cache
@@ -239,6 +240,11 @@ namespace mods {
 				localizes.clear();
 				cache_entries.clear();
 
+				for (auto& redirect : assets_redirects)
+				{
+					redirect.clear();
+				}
+
 				for (char* str : allocated_strings)
 				{
 					delete str;
@@ -258,6 +264,7 @@ namespace mods {
 
 			void sync_cache_entries()
 			{
+				std::lock_guard lg{ load_mutex };
 				custom_cache.defCount = 0;
 				custom_cache.def = nullptr;
 				custom_cache_entries.clear();
@@ -888,6 +895,48 @@ namespace mods {
 
 				return true;
 			}
+			bool read_redirect_entry(rapidjson::Value& member, const char* mod_name, const std::filesystem::path& mod_path)
+			{
+				auto type = member.FindMember("type");
+
+				if (type == member.MemberEnd() || !type->value.IsString())
+				{
+					logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a redirect member without a valid type", mod_name));
+					return false;
+				}
+
+				auto origin = member.FindMember("origin");
+
+				if (origin == member.MemberEnd() || !origin->value.IsString())
+				{
+					logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a redirect member without a valid origin", mod_name));
+					return false;
+				}
+
+				auto target = member.FindMember("target");
+
+				if (target == member.MemberEnd() || !target->value.IsString())
+				{
+					logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a redirect member without a valid target", mod_name));
+					return false;
+				}
+
+				xassets::XAssetType assettype = xassets::DB_GetXAssetTypeIndex(type->value.GetString());
+
+				if (assettype == xassets::ASSET_TYPE_COUNT)
+				{
+					logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a redirect member without a valid type: {}", mod_name, type->value.GetString()));
+					return false;
+				}
+
+				int64_t from = fnv1a::generate_hash_pattern(origin->value.GetString());
+				int64_t to = fnv1a::generate_hash_pattern(target->value.GetString());
+				assets_redirects[assettype][from] = to;
+
+				logger::write(logger::LOG_TYPE_DEBUG, std::format("mod {}: loaded redirect {:x} -> {:x} ({})", mod_name, from, to, xassets::DB_GetXAssetTypeName(assettype)));
+
+				return true;
+			}
 
 			bool load_mods()
 			{
@@ -982,6 +1031,27 @@ namespace mods {
 							}
 						}
 					}
+					auto redirect_member = info.FindMember("redirect");
+
+					if (redirect_member != info.MemberEnd() && redirect_member->value.IsArray())
+					{
+						auto redirect_array = redirect_member->value.GetArray();
+
+						for (rapidjson::Value& member : redirect_array)
+						{
+							if (!member.IsObject())
+							{
+								logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a bad redirect member", mod_name));
+								mod_errors++;
+								continue;
+							}
+
+							if (!read_redirect_entry(member, mod_name, mod_path))
+							{
+								mod_errors++;
+							}
+						}
+					}
 
 					if (mod_errors)
 					{
@@ -1022,6 +1092,19 @@ namespace mods {
 
 	void* db_find_xasset_header_stub(xassets::XAssetType type, game::BO4_AssetRef_t* name, bool errorIfMissing, int waitTime)
 	{
+		auto& redirect = storage.assets_redirects[type];
+
+		auto replaced = redirect.find(name->hash & 0x7FFFFFFFFFFFFFFF);
+
+		game::BO4_AssetRef_t redirected_name;
+		if (replaced != redirect.end())
+		{
+			// replace xasset
+			redirected_name.hash = replaced->second;
+			redirected_name.null = 0;
+			name = &redirected_name;
+		}
+
 		void* header = storage.get_xasset(type, name->hash);
 
 		if (header)

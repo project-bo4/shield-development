@@ -67,4 +67,25 @@ namespace xassets
 	{
 		return cache_names[type];
 	}
+
+	XAssetType DB_GetXAssetTypeIndex(const char* name)
+	{
+		for (size_t i = 0; i < XAssetType::ASSET_TYPE_COUNT; i++)
+		{
+			if (!_strcmpi(name, s_XAssetTypeInfo[i].name))
+			{
+				return (XAssetType)i;
+			}
+		}
+		return XAssetType::ASSET_TYPE_COUNT;
+	}
+
+	const char* DB_GetXAssetTypeName(XAssetType type)
+	{
+		if (type >= ASSET_TYPE_COUNT)
+		{
+			return "invalid";
+		}
+		return s_XAssetTypeInfo[type].name;
+	}
 }
