@@ -223,6 +223,39 @@ namespace game
 		ScrVarType_t type;
 	};
 
+	struct ScrVar_t_Info
+	{
+		uint32_t nameType : 3;
+		uint32_t flags : 5;
+		uint32_t refCount : 24;
+	};
+
+	struct ScrVar_t
+	{
+		ScrVarNameIndex_t nameIndex;
+		ScrVar_t_Info _anon_0;
+		ScrVarIndex_t nextSibling;
+		ScrVarIndex_t prevSibling;
+		ScrVarIndex_t parentId;
+		ScrVarIndex_t nameSearchHashList;
+		uint32_t pad0;
+	};
+
+	union ScrVarObjectInfo1_t
+	{
+		uint64_t object_o;
+		unsigned int size;
+		ScrVarIndex_t nextEntId;
+		ScrVarIndex_t self;
+		ScrVarIndex_t free;
+	};
+
+	union ScrVarObjectInfo2_t
+	{
+		uint32_t object_w;
+		ScrVarIndex_t stackId;
+	};
+
 	struct function_stack_t
 	{
 		byte* pos;
@@ -231,6 +264,11 @@ namespace game
 		ScrVarIndex_t threadId;
 		uint16_t localVarCount;
 		uint16_t profileInfoCount;
+	};
+
+	struct function_frame_t
+	{
+		function_stack_t fs;
 	};
 
 	struct ScrVmContext_t
@@ -242,6 +280,48 @@ namespace game
 	};
 
 	typedef void (*VM_OP_FUNC)(scriptInstance_t, function_stack_t*, ScrVmContext_t*, bool*);
+
+
+	struct BO4_scrVarGlob
+	{
+		ScrVarIndex_t* scriptNameSearchHashList;
+		ScrVar_t* scriptVariables;
+		ScrVarObjectInfo1_t* scriptVariablesObjectInfo1;
+		ScrVarObjectInfo2_t* scriptVariablesObjectInfo2;
+		ScrVarValue_t* scriptValues;
+	};
+
+	struct BO4_scrVmPub
+	{
+		void* unk0;
+		void* unk8;
+		void* executionQueueHeap; // HunkUser
+		void* timeByValueQueue; // VmExecutionQueueData_t
+		void* timeByThreadQueue[1024]; // VmExecutionQueue_t
+		void* frameByValueQueue; // VmExecutionQueueData_t
+		void* frameByThreadQueue[1024]; // VmExecutionQueue_t
+		void* timeoutByValueList; // VmExecutionQueueData_t
+		void* timeoutByThreadList[1024]; // VmExecutionQueue_t
+		void* notifyByObjectQueue[1024]; // VmExecutionNotifyQueue_t
+		void* notifyByThreadQueue[1024]; // VmExecutionNotifyQueue_t
+		void* endonByObjectList[1024]; // VmExecutionNotifyQueue_t
+		void* endonByThreadList[1024]; // VmExecutionNotifyQueue_t
+		ScrVarIndex_t* localVars;
+		ScrVarValue_t* maxstack;
+		function_frame_t* function_frame;
+		ScrVarValue_t* top;
+		function_frame_t function_frame_start[64];
+		ScrVarValue_t stack[2048];
+		uint32_t time;
+		uint32_t frame;
+		int function_count;
+		int callNesting;
+		unsigned int inparamcount;
+		bool showError;
+		bool systemInitialized;
+		bool vmInitialized;
+		bool isShutdown;
+	};
 
 	struct objFileInfo_t
 	{
@@ -807,11 +887,20 @@ namespace game
 	WEAK symbol<int64_t(scriptInstance_t inst, unsigned int index)> ScrVm_GetInt{ 0x142773B50_g };
 	WEAK symbol<const char*(scriptInstance_t inst, unsigned int index)> ScrVm_GetString{ 0x142774840_g };
 	WEAK symbol<void(scriptInstance_t inst, unsigned int index, vec3_t* vector)> ScrVm_GetVector{ 0x142774E40_g };
-	WEAK symbol<int32_t(scriptInstance_t inst, unsigned int index)> ScrVm_GetConstString{ 0x142772E10_g };
+	WEAK symbol<ScrVarIndex_t(scriptInstance_t inst, unsigned int index)> ScrVm_GetConstString{ 0x142772E10_g };
 	WEAK symbol<uint32_t(scriptInstance_t inst)> ScrVm_GetNumParam{ 0x142774440_g };
 	WEAK symbol<ScrVarType_t(scriptInstance_t inst, unsigned int index)> ScrVm_GetPointerType{ 0x1427746E0_g };
 	WEAK symbol<ScrVarType_t(scriptInstance_t inst, unsigned int index)> ScrVm_GetType{ 0x142774A20_g };
-
+	WEAK symbol<uint32_t(scriptInstance_t inst)> ScrVm_AddStruct{ 0x14276EF00_g };
+	WEAK symbol<void(scriptInstance_t inst, uint32_t structId, uint32_t name)> ScrVm_SetStructField{ 0x142778450_g };
+	WEAK symbol<void(scriptInstance_t inst)> ScrVm_AddToArray{ 0x14276F1C0_g };
+	WEAK symbol<void(scriptInstance_t inst, BO4_AssetRef_t* name)> ScrVm_AddToArrayStringIndexed{ 0x14276F230_g };
+	WEAK symbol<void(scriptInstance_t inst, vec3_t* vec)> ScrVm_AddVector{ 0x14276F490_g };
+	WEAK symbol<void(scriptInstance_t inst)> ScrVar_PushArray{ 0x142775CF0_g };
+	WEAK symbol<const char* (ScrVarIndex_t index)> ScrStr_ConvertToString{ 0x142759030_g };
+	WEAK symbol<ScrVarIndex_t(scriptInstance_t inst, ScrVarIndex_t parentId, ScrVarNameIndex_t index)> ScrVar_NewVariableByIndex{ 0x142760440_g };
+	WEAK symbol<void(scriptInstance_t inst, ScrVarIndex_t id, ScrVarValue_t* value)> ScrVar_SetValue{ 0x1427616B0_g };
+	
 	WEAK symbol<BuiltinFunction(uint32_t canonId, int* type, int* min_args, int* max_args)> CScr_GetFunction{ 0x141F13140_g };
 	WEAK symbol<BuiltinFunction(uint32_t canonId, int* type, int* min_args, int* max_args)> Scr_GetFunction{ 0x1433AF840_g };
 	WEAK symbol<void*(uint32_t canonId, int* type, int* min_args, int* max_args)> CScr_GetMethod{ 0x141F13650_g };
@@ -819,6 +908,8 @@ namespace game
 
 	WEAK symbol<void(uint64_t code, scriptInstance_t inst, char* unused, bool terminal)> ScrVm_Error{ 0x142770330_g };
 	WEAK symbol<BO4_scrVarPub> scrVarPub{ 0x148307880_g };
+	WEAK symbol<BO4_scrVarGlob> scrVarGlob{ 0x148307830_g };
+	WEAK symbol<BO4_scrVmPub> scrVmPub{ 0x148307AA0_g };
 
 	WEAK symbol<VM_OP_FUNC> gVmOpJumpTable{ 0x144EED340_g };
 	WEAK symbol<uint32_t> gObjFileInfoCount{ 0x1482F76B0_g };

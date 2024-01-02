@@ -9,6 +9,9 @@ namespace gsc_funcs
 	extern bool enable_dev_func;
 
 	uint32_t canon_hash(const char* str);
-
+	uint32_t canon_hash_pattern(const char* str);
+	
 	void gsc_error(const char* message, game::scriptInstance_t inst, bool terminal, ...);
+
+	void ScrVm_AddToArrayIntIndexed(game::scriptInstance_t inst, uint64_t index);
 }

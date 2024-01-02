@@ -9,6 +9,7 @@
 
 
 #include <utilities/hook.hpp>
+#include <utilities/io.hpp>
 #include <utilities/json_config.hpp>
 
 namespace gsc_funcs
@@ -25,6 +26,19 @@ namespace gsc_funcs
 
 		return 0x8001 * ((9 * hash) ^ ((9 * hash) >> 11));
 	}
+
+	uint32_t canon_hash_pattern(const char* str)
+	{
+		std::string_view v{ str };
+
+		// basic notations hash_123, var_123
+		if (!v.rfind("hash_", 0)) return std::strtoul(&str[5], nullptr, 16) & 0xFFFFFFFF;
+		if (!v.rfind("var_", 0)) return std::strtoul(&str[4], nullptr, 16) & 0xFFFFFFFF;
+
+		// unknown, use hashed value
+		return canon_hash(str);
+	}
+
 	void gsc_error(const char* message, game::scriptInstance_t inst, bool terminal, ...)
 	{
 		static char buffer[game::scriptInstance_t::SCRIPTINSTANCE_MAX][0x800];
@@ -37,8 +51,20 @@ namespace gsc_funcs
 		game::ScrVm_Error(game::runtime_errors::custom_error_id, inst, buffer[inst], terminal);
 	}
 
+	void ScrVm_AddToArrayIntIndexed(game::scriptInstance_t inst, uint64_t index)
+	{
+		auto& vm = game::scrVmPub[inst];
+		--vm.callNesting;
+		--vm.top;
+		game::ScrVarIndex_t varidx = game::ScrVar_NewVariableByIndex(inst, vm.top->u.pointerValue, index);
+		game::ScrVar_SetValue(inst, varidx, vm.top + 1);
+	}
+
+
 	namespace
 	{
+		constexpr auto gsc_json_data_name_max_length = 40;
+		constexpr const char* gsc_json_type = "$.type";
 		enum hud_elem_align_x
 		{
 			HUD_ALIGN_X_LEFT = 0,
@@ -141,6 +167,9 @@ namespace gsc_funcs
 			{
 			case game::TYPE_UNDEFINED:
 				logger::write(logger::LOG_TYPE_INFO, "[ %s VM ] undefined", inst ? "CSC" : "GSC");
+				break;
+			case game::TYPE_POINTER:
+				logger::write(logger::LOG_TYPE_INFO, "[ %s VM ] Pointer[%s]", inst ? "CSC" : "GSC", game::var_typename[game::ScrVm_GetPointerType(inst, offset)]);
 				break;
 			case game::TYPE_STRING:
 				logger::write(logger::LOG_TYPE_INFO, "[ %s VM ] %s", inst ? "CSC" : "GSC", game::ScrVm_GetString(inst, offset));
@@ -515,6 +544,390 @@ namespace gsc_funcs
 			hashRef.null = 0;
 			xassets::BG_Cache_RegisterAndGet((xassets::BGCacheTypes)type, &hashRef);
 		}
+
+		void shield_to_json_val(game::scriptInstance_t inst, game::ScrVarValue_t* val, rapidjson::Value& member, rapidjson::Document& doc, int depth)
+		{
+			if (depth >= 10)
+			{
+				// avoid recursion
+				member.SetNull();
+				return;
+			}
+			switch (val->type)
+			{
+			case game::TYPE_UNDEFINED: return; // ignore
+			case game::TYPE_FLOAT:
+			{
+				member.SetFloat(val->u.floatValue);
+			}
+			break;
+			case game::TYPE_INTEGER:
+			{
+				member.SetInt64(val->u.intValue);
+			}
+			break;
+			case game::TYPE_STRING:
+			{
+				member.SetString(game::ScrStr_ConvertToString(val->u.pointerValue), doc.GetAllocator());
+			}
+			break;
+			case game::TYPE_VECTOR:
+			{
+				member.SetObject();
+				auto obj = member.GetObj();
+				obj.AddMember(rapidjson::StringRef(gsc_json_type), "vector", doc.GetAllocator());
+				obj.AddMember(rapidjson::StringRef("x"), val->u.vectorValue[0], doc.GetAllocator());
+				obj.AddMember(rapidjson::StringRef("y"), val->u.vectorValue[1], doc.GetAllocator());
+				obj.AddMember(rapidjson::StringRef("z"), val->u.vectorValue[2], doc.GetAllocator());
+			}
+			break;
+			case game::TYPE_HASH:
+			{
+				member.SetObject();
+				auto obj = member.GetObj();
+				obj.AddMember(rapidjson::StringRef(gsc_json_type), "hash", doc.GetAllocator());
+				auto hash = val->u.intValue & 0x7FFFFFFFFFFFFFFF;
+				std::string name = std::format("hash_{:x}", hash);
+				obj.AddMember(rapidjson::StringRef("hash"), name, doc.GetAllocator());
+			}
+			break;
+			case game::TYPE_POINTER:
+			{
+				game::ScrVarIndex_t ptr_id = val->u.pointerValue;
+				game::ScrVarValue_t& ptr_val = game::scrVarGlob[inst].scriptValues[ptr_id];
+
+				member.SetObject();
+				auto obj = member.GetObj();
+
+				
+				if (ptr_val.type == game::TYPE_ARRAY)
+				{
+					obj.AddMember(rapidjson::StringRef(gsc_json_type), "array", doc.GetAllocator());
+
+					auto size = game::scrVarGlob[inst].scriptVariablesObjectInfo1[ptr_id].size;
+					if (size)
+					{
+						game::ScrVar_t* var = &game::scrVarGlob[inst].scriptVariables[ptr_val.u.pointerValue];
+						game::ScrVarValue_t* value = &game::scrVarGlob[inst].scriptValues[ptr_val.u.pointerValue];
+
+						while (var)
+						{
+							rapidjson::Value subval{};
+
+							// read struct value
+							shield_to_json_val(inst, value, subval, doc, depth + 1);
+
+							if (var->_anon_0.nameType == 1) // integer index
+							{
+								std::string keyval = std::format("{}", var->nameIndex);
+								rapidjson::Value keyjson{ rapidjson::kStringType };
+								keyjson.SetString(keyval, doc.GetAllocator());
+								obj.AddMember(keyjson, subval, doc.GetAllocator());
+							}
+							else
+							{
+								std::string keyval = std::format("#var_{:x}", var->nameIndex);
+								rapidjson::Value keyjson{ rapidjson::kStringType };
+								keyjson.SetString(keyval, doc.GetAllocator());
+								obj.AddMember(keyjson, subval, doc.GetAllocator());
+							}
+
+							if (!var->nextSibling)
+							{
+								break;
+							}
+
+							value = &game::scrVarGlob[inst].scriptValues[var->nextSibling];
+							var = &game::scrVarGlob[inst].scriptVariables[var->nextSibling];
+						}
+					}
+					return;
+				}
+				
+				if (ptr_val.type == game::TYPE_STRUCT)
+				{
+					auto size = game::scrVarGlob[inst].scriptVariablesObjectInfo1[ptr_id].size;
+					if (size)
+					{
+						game::ScrVar_t* var = &game::scrVarGlob[inst].scriptVariables[ptr_val.u.pointerValue];
+						game::ScrVarValue_t* value = &game::scrVarGlob[inst].scriptValues[ptr_val.u.pointerValue];
+
+						while (var)
+						{
+							rapidjson::Value subval{};
+
+							// read struct value
+							shield_to_json_val(inst, value, subval, doc, depth + 1);
+
+							std::string keyval = std::format("var_{:x}", var->nameIndex);
+							rapidjson::Value keyjson{ rapidjson::kStringType };
+							keyjson.SetString(keyval, doc.GetAllocator());
+							obj.AddMember(keyjson, subval, doc.GetAllocator());
+
+							if (!var->nextSibling)
+							{
+								break;
+							}
+
+							value = &game::scrVarGlob[inst].scriptValues[var->nextSibling];
+							var = &game::scrVarGlob[inst].scriptVariables[var->nextSibling];
+						}
+					}
+					return;
+				}
+				// shared_struct and entity aren't using the same syntax
+				gsc_error("invalid tojson param pointer type: %s", inst, false, game::var_typename[ptr_val.type]);
+				return;
+			}
+			break;
+			default:
+			{
+				gsc_error("invalid tojson param type: %s", inst, false, game::var_typename[val->type]);
+				return;
+			}
+			}
+		}
+
+		void shield_to_json(game::scriptInstance_t inst)
+		{
+			const char* fileid = game::ScrVm_GetString(inst, 0);
+			std::string_view v{ fileid };
+
+			if (v.rfind("/", 0) != std::string::npos || v.rfind("\\", 0) != std::string::npos)
+			{
+				gsc_error("can't save json containing '/' or '\\'", inst, false);
+				return;
+			}
+
+			if (v.length() > gsc_json_data_name_max_length)
+			{
+				gsc_error("json name can't be longer than %d", inst, false, gsc_json_data_name_max_length);
+				return;
+			}
+
+			std::string file{ std::format("project-bo4/saved/{}/{}.json", (inst ? "client" : "server"), fileid) };
+
+			if (inst)
+			{
+				std::filesystem::create_directories("project-bo4/saved/client");
+			}
+			else
+			{
+				std::filesystem::create_directories("project-bo4/saved/server");
+			}
+
+			game::ScrVarValue_t* val = &game::scrVmPub[inst].top[-1];
+
+			if (game::ScrVm_GetNumParam(inst) == 1 || val->type == game::TYPE_UNDEFINED)
+			{
+				std::filesystem::remove(file);
+				return;
+			}
+
+			rapidjson::Document doc{};
+
+			shield_to_json_val(inst, val, doc, doc, 0);
+
+			rapidjson::StringBuffer buffer;
+			rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
+			doc.Accept(writer);
+
+			std::string json_data(buffer.GetString(), buffer.GetLength());
+			utilities::io::write_file(file, json_data);
+		}
+
+		void shield_from_json_push_struct(game::scriptInstance_t inst, rapidjson::Value& member)
+		{
+			if (member.IsString())
+			{
+				game::ScrVm_AddString(inst, member.GetString());
+				return;
+			}
+
+			if (member.IsFloat())
+			{
+				game::ScrVm_AddFloat(inst, member.GetFloat());
+				return;
+			}
+
+			if (member.IsNumber())
+			{
+				game::ScrVm_AddInt(inst, member.GetInt64());
+				return;
+			}
+
+			if (member.IsBool())
+			{
+				game::ScrVm_AddBool(inst, member.GetBool());
+				return;
+			}
+
+			if (member.IsNull())
+			{
+				logger::write(logger::LOG_TYPE_WARN, "ShieldFromJson: read null");
+				game::ScrVm_AddUndefined(inst);
+				return;
+			}
+			
+			if (member.IsArray())
+			{
+				auto arr = member.GetArray();
+
+				game::ScrVar_PushArray(inst);
+
+				for (rapidjson::Value& elem : arr)
+				{
+					shield_from_json_push_struct(inst, elem);
+					game::ScrVm_AddToArray(inst);
+				}
+				return;
+			}
+
+			if (member.IsObject())
+			{
+				auto obj = member.GetObj();
+				auto typefield = obj.FindMember(gsc_json_type);
+
+				if (typefield != obj.MemberEnd() && typefield->value.IsString())
+				{
+					const char* type = typefield->value.GetString();
+
+					if (!_strcmpi(type, "array"))
+					{
+						game::ScrVar_PushArray(inst);
+
+						game::BO4_AssetRef_t name{};
+
+						for (auto& [key, elem] : obj)
+						{
+							if (!key.IsString())
+							{
+								gsc_error("read bad key value for array", inst, false);
+								return;
+							}
+							if (!_strcmpi(key.GetString(), gsc_json_type))
+							{
+								continue;
+							}
+							const char* keystr = key.GetString();
+							if (!*keystr)
+							{
+								continue;
+							}
+							shield_from_json_push_struct(inst, elem);
+
+							if (*keystr == '#')
+							{
+								name.hash = fnv1a::generate_hash_pattern(key.GetString());
+								game::ScrVm_AddToArrayStringIndexed(inst, &name);
+							}
+							else
+							{
+								uint64_t keyval{};
+								try
+								{
+									keyval = std::strtoull(keystr, nullptr, 10);
+								}
+								catch (const std::invalid_argument& e)
+								{
+									gsc_error("invalid key for array member %s", inst, false, e.what());
+									return;
+								}
+								ScrVm_AddToArrayIntIndexed(inst, keyval);
+							}
+						}
+						return;
+					}
+
+					if (!_strcmpi(type, "vector"))
+					{
+						auto x = obj.FindMember("x");
+						auto y = obj.FindMember("y");
+						auto z = obj.FindMember("z");
+
+						if (
+							x != obj.MemberEnd() && y != obj.MemberEnd() && z != obj.MemberEnd()
+							&& x->value.IsNumber() && y->value.IsNumber() && z->value.IsNumber())
+						{
+							game::vec3_t vec{};
+
+							vec[0] = x->value.GetFloat();
+							vec[1] = y->value.GetFloat();
+							vec[2] = z->value.GetFloat();
+							game::ScrVm_AddVector(inst, &vec);
+							return;
+						}
+					}
+					if (!_strcmpi(type, "hash"))
+					{
+						auto value = obj.FindMember("hash");
+
+						if (value != obj.MemberEnd() && value->value.IsString()) {
+							game::BO4_AssetRef_t hash
+							{
+								.hash = (int64_t)fnv1a::generate_hash_pattern(value->value.GetString())
+							};
+
+							game::ScrVm_AddHash(inst, &hash);
+							return;
+						}
+					}
+				}
+
+				// object by default
+				uint32_t struct_id = game::ScrVm_AddStruct(inst);
+
+				for (auto& [key, elem] : obj)
+				{
+					if (!key.IsString())
+					{
+						gsc_error("read bad key value for struct", inst, false);
+						return;
+					}
+					if (!_strcmpi(key.GetString(), gsc_json_type))
+					{
+						continue;
+					}
+					shield_from_json_push_struct(inst, elem);
+					game::ScrVm_SetStructField(inst, struct_id, canon_hash_pattern(key.GetString()));
+				}
+				return;
+			}
+			gsc_error("bad json element: %d", inst, false, (int)member.GetType());
+		}
+
+		void shield_from_json(game::scriptInstance_t inst)
+		{
+			const char* fileid = game::ScrVm_GetString(inst, 0);
+			std::string_view v{ fileid };
+
+			if (v.rfind("/", 0) != std::string::npos || v.rfind("\\", 0) != std::string::npos)
+			{
+				gsc_error("can't save json containing '/' or '\\'", inst, false);
+				return;
+			}
+
+			if (v.length() > gsc_json_data_name_max_length)
+			{
+				gsc_error("json name can't be longer than %d", inst, false, gsc_json_data_name_max_length);
+				return;
+			}
+			
+			std::string file{ std::format("project-bo4/saved/{}/{}.json", (inst ? "client" : "server"), fileid) };
+
+			std::string file_content{};
+
+			if (!utilities::io::read_file(file, &file_content))
+			{
+				logger::write(logger::LOG_TYPE_WARN, "trying to read unknown config file %s", file.c_str());
+				return;
+			}
+
+			rapidjson::Document doc{};
+			doc.Parse(file_content);
+
+			shield_from_json_push_struct(inst, doc);
+		}
 		
 		game::BO4_BuiltinFunctionDef custom_functions_gsc[] =
 		{
@@ -594,6 +1007,27 @@ namespace gsc_funcs
 				.max_args = 2,
 				.actionFunc = pre_cache_resource,
 				.type = 0,
+			},
+			{ // ShieldFromJson(name)->object
+				.canonId = canon_hash("ShieldFromJson"),
+				.min_args = 1,
+				.max_args = 1,
+				.actionFunc = shield_from_json,
+				.type = 0
+			},
+			{ // ShieldFromJson(name)
+				.canonId = canon_hash("ShieldRemoveJson"),
+				.min_args = 1,
+				.max_args = 1,
+				.actionFunc = shield_to_json,
+				.type = 0
+			},
+			{// ShieldFromJson(name, object = undefined)
+				.canonId = canon_hash("ShieldToJson"),
+				.min_args = 1,
+				.max_args = 2,
+				.actionFunc = shield_to_json,
+				.type = 0
 			}
 		};
 		game::BO4_BuiltinFunctionDef custom_functions_csc[] =
@@ -667,6 +1101,27 @@ namespace gsc_funcs
 				.max_args = 255,
 				.actionFunc = serious_custom_func,
 				.type = 0,
+			},
+			{ // ShieldFromJson(name)->object
+				.canonId = canon_hash("ShieldFromJson"),
+				.min_args = 1,
+				.max_args = 1,
+				.actionFunc = shield_from_json,
+				.type = 0
+			},
+			{ // ShieldFromJson(name)
+				.canonId = canon_hash("ShieldRemoveJson"),
+				.min_args = 1,
+				.max_args = 1,
+				.actionFunc = shield_to_json,
+				.type = 0
+			},
+			{// ShieldToJson(name, object = undefined)
+				.canonId = canon_hash("ShieldToJson"),
+				.min_args = 1,
+				.max_args = 2,
+				.actionFunc = shield_to_json,
+				.type = 0
 			}
 		};
 
