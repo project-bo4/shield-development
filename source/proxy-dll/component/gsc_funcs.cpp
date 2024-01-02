@@ -818,7 +818,7 @@ namespace gsc_funcs
 
 							if (*keystr == '#')
 							{
-								name.hash = fnv1a::generate_hash_pattern(key.GetString());
+								name.hash = fnv1a::generate_hash_pattern(key.GetString() + 1);
 								game::ScrVm_AddToArrayStringIndexed(inst, &name);
 							}
 							else
