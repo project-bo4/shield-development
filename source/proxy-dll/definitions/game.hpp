@@ -81,7 +81,7 @@ namespace game
 		int32_t include_offset;
 		uint16_t string_count;
 		uint16_t exports_count;
-		int32_t ukn20;
+		int32_t start_data;
 		int32_t string_offset;
 		int16_t imports_count;
 		uint16_t fixup_count;
@@ -95,7 +95,7 @@ namespace game
 		int32_t script_size;
 		int32_t requires_implements_offset;
 		int32_t ukn50;
-		int32_t ukn54;
+		int32_t data_length;
 		uint16_t include_count;
 		byte ukn5a;
 		byte requires_implements_count;
@@ -803,6 +803,24 @@ namespace game
 		CON_LABEL_COUNT = 0x3F
 	};
 
+	enum scoped_critical_section_type : int32_t
+	{
+		SCOPED_CRITSECT_NORMAL = 0x0,
+		SCOPED_CRITSECT_DISABLED = 0x1,
+		SCOPED_CRITSECT_RELEASE = 0x2,
+		SCOPED_CRITSECT_TRY = 0x3,
+	};
+
+	class scoped_critical_section
+	{
+		int32_t _s;
+		bool _hasOwnership;
+		bool _isScopedRelease;
+		scoped_critical_section* _next;
+	public:
+		scoped_critical_section(int32_t s, scoped_critical_section_type type);
+		~scoped_critical_section();
+	};
 
 	//////////////////////////////////////////////////////////////////////////
 	//                               SYMBOLS                                //
@@ -838,6 +856,10 @@ namespace game
 
 	// Main Functions
 	WEAK symbol<void(const char* file, int line, int code, const char* fmt, ...)> Com_Error_{ 0x14288B410_g };
+
+	// mutex
+	WEAK symbol<void(scoped_critical_section* sec, int32_t s, scoped_critical_section_type type)> ScopedCriticalSectionConstructor{ 0x14289E3C0_g };
+	WEAK symbol<void(scoped_critical_section* sec)> ScopedCriticalSectionDestructor{ 0x14289E440_g };
 
 	// CMD
 	WEAK symbol<void(int localClientNum, const char* text)> Cbuf_AddText{ 0x143CDE880_g };
@@ -938,4 +960,12 @@ namespace game
 	
 #define Com_Error(code, fmt, ...) \
 		Com_Error_(__FILE__, __LINE__, code, fmt, ##__VA_ARGS__)
+
+	class scoped_critical_section_guard_lock
+	{
+
+
+
+
+	};
 }

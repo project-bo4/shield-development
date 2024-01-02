@@ -1,5 +1,6 @@
 #include <std_include.hpp>
 #include "variables.hpp"
+#include "component/hashes.hpp"
 
 namespace fnv1a
 {
@@ -21,7 +22,14 @@ namespace fnv1a
 			res *= 0x100000001B3;
 		}
 
-		return res & 0x7FFFFFFFFFFFFFFF;
+		uint64_t val = res & 0x7FFFFFFFFFFFFFFF;
+
+		if (start == 0xCBF29CE484222325)
+		{
+			hashes::add_hash(val, string);
+		}
+
+		return val;
 	}
 
 	uint64_t generate_hash_pattern(const char* string)
@@ -51,7 +59,7 @@ namespace fnv1a
 
 			return std::strtoull(&string[4], nullptr, 16) & 0x7FFFFFFFFFFFFFFF;
 		}
-		
+
 		// unknown, use hashed value
 		return generate_hash(string);
 	}

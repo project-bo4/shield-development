@@ -1,6 +1,7 @@
 #include <std_include.hpp>
 #include "gsc_funcs.hpp"
 #include "gsc_custom.hpp"
+#include "hashes.hpp"
 #include "definitions/game.hpp"
 #include "definitions/game_runtime_errors.hpp"
 #include "definitions/xassets.hpp"
@@ -24,7 +25,11 @@ namespace gsc_funcs
 			hash = ((c + hash) ^ ((c + hash) << 10)) + (((c + hash) ^ ((c + hash) << 10)) >> 6);
 		}
 
-		return 0x8001 * ((9 * hash) ^ ((9 * hash) >> 11));
+		uint32_t val = 0x8001 * ((9 * hash) ^ ((9 * hash) >> 11));
+
+		hashes::add_hash(val, str);
+
+		return val;
 	}
 
 	uint32_t canon_hash_pattern(const char* str)
@@ -49,6 +54,21 @@ namespace gsc_funcs
 		va_end(va);
 
 		game::ScrVm_Error(game::runtime_errors::custom_error_id, inst, buffer[inst], terminal);
+	}
+
+	const char* lookup_hash(game::scriptInstance_t inst, const char* type, uint64_t hash)
+	{
+		static char buffer[game::SCRIPTINSTANCE_MAX][0x50];
+		const char* str = hashes::lookup(hash);
+
+		if (str)
+		{
+			return str;
+		}
+
+		sprintf_s(buffer[inst], "%s_%llx", type, hash);
+
+		return buffer[inst];
 	}
 
 	void ScrVm_AddToArrayIntIndexed(game::scriptInstance_t inst, uint64_t index)
@@ -177,7 +197,7 @@ namespace gsc_funcs
 			case game::TYPE_HASH:
 			{
 				game::BO4_AssetRef_t hash{};
-				logger::write(logger::LOG_TYPE_INFO, "[ %s VM ] %llx", inst ? "CSC" : "GSC", game::ScrVm_GetHash(&hash, inst, offset)->hash);
+				logger::write(logger::LOG_TYPE_INFO, "[ %s VM ] %llx", inst ? "CSC" : "GSC", lookup_hash(inst, "hash", game::ScrVm_GetHash(&hash, inst, offset)->hash));
 			}
 				break;
 			case game::TYPE_INTEGER:
@@ -507,7 +527,7 @@ namespace gsc_funcs
 			}
 			else
 			{
-				gsc_error("compiler::function_%llx not implemented", inst, false, hash);
+				gsc_error("compiler::%s not implemented", inst, false, lookup_hash(inst, "function", hash));
 			}
 		}
 
@@ -1345,6 +1365,100 @@ namespace gsc_funcs
 		logger::write(logger::LOG_TYPE_ERROR, str);
 	}
 
+	void patch_scrvm_runtime_error()
+	{
+		const auto scrvm_runtimeerror = 0x1427775B0_g;
+		void* stub = utilities::hook::assemble([scrvm_runtimeerror](utilities::hook::assembler& a)
+			{
+				a.mov(ebx, 0x20); // set errorcode to 0x20
+				a.mov(al, 0); // set ZF to avoid the ebx overwrite
+
+				a.jmp(scrvm_runtimeerror + 0x3DC);
+			}
+		);
+
+		utilities::hook::jump(scrvm_runtimeerror + 0x3A0, stub);
+	}
+
+	void get_gsc_export_info(game::scriptInstance_t inst, byte* codepos, const char** scriptname, int32_t* sloc, int32_t* crc, int32_t* vm)
+	{
+		static char scriptnamebuffer[game::scriptInstance_t::SCRIPTINSTANCE_MAX][0x200];
+		game::GSC_OBJ* script_obj = nullptr;
+		{
+			game::scoped_critical_section scs{ 0x36, game::SCOPED_CRITSECT_NORMAL };
+
+			uint32_t count = game::gObjFileInfoCount[inst];
+
+			for (size_t i = 0; i < count; i++)
+			{
+				game::objFileInfo_t& info = (*game::gObjFileInfo)[inst][i];
+
+				game::GSC_OBJ* obj = info.activeVersion;
+
+				if (codepos >= obj->magic + obj->start_data && codepos < obj->magic + obj->start_data + obj->data_length)
+				{
+					script_obj = obj;
+					break;
+				}
+			}
+		}
+
+		if (script_obj)
+		{
+			game::GSC_EXPORT_ITEM* export_item = nullptr;
+
+			uint32_t rloc = (uint32_t)(codepos - script_obj->magic);
+
+			for (size_t i = 0; i < script_obj->exports_count; i++)
+			{
+				game::GSC_EXPORT_ITEM* exp = reinterpret_cast<game::GSC_EXPORT_ITEM*>(script_obj->magic + script_obj->exports_offset);
+
+				if (rloc < exp->address)
+				{
+					continue; // our code is after
+				}
+
+				if (export_item && export_item->address > exp->address)
+				{
+					continue; // we already have a better candidate
+				}
+
+				export_item = exp;
+			}
+
+
+			if (scriptname)
+			{
+				if (export_item)
+				{
+					std::string script_name = lookup_hash(inst, "script", script_obj->name & 0x7FFFFFFFFFFFFFFF);
+
+					sprintf_s(scriptnamebuffer[inst], "%s::%s@%x", script_name.c_str(), lookup_hash(inst, "function", export_item->name), rloc - export_item->address);
+				} else
+				{
+					sprintf_s(scriptnamebuffer[inst], "%s", lookup_hash(inst, "script", script_obj->name & 0x7FFFFFFFFFFFFFFF));
+				}
+
+				*scriptname = scriptnamebuffer[inst];
+			}
+
+			if (sloc)
+			{
+				*sloc = rloc;
+			}
+
+			if (crc)
+			{
+				*crc = script_obj->crc;
+			}
+
+			if (vm)
+			{
+				*vm = script_obj->magic[7];
+			}
+		}
+	}
+
 	class component final : public component_interface
 	{
 	public:
@@ -1363,6 +1477,10 @@ namespace gsc_funcs
 			// log gsc errors
 			scrvm_error.create(0x142770330_g, scrvm_error_stub);
 			utilities::hook::jump(0x142890470_g, scrvm_log_compiler_error);
+
+			// better runtime error
+			utilities::hook::jump(0x142748550_g, get_gsc_export_info);
+			patch_scrvm_runtime_error();
 			
 			scheduler::loop(draw_hud, scheduler::renderer);
 		}

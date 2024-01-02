@@ -9,6 +9,17 @@ namespace game
     typedef const char* (__fastcall* Com_GetBuildVersion_t)();
     Com_GetBuildVersion_t Com_GetBuildVersion = (Com_GetBuildVersion_t)0x142892F40_g;
 
+
+    scoped_critical_section::scoped_critical_section(int32_t s, scoped_critical_section_type type) : _s(0), _hasOwnership(false), _isScopedRelease(false), _next(nullptr)
+    {
+        game::ScopedCriticalSectionConstructor(this, s, type);
+    }
+
+    scoped_critical_section::~scoped_critical_section()
+    {
+        game::ScopedCriticalSectionDestructor(this);
+    }
+
     namespace
     {
         void verify_game_version()

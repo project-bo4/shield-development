@@ -6,9 +6,10 @@
 
 #include "gsc_funcs.hpp"
 #include "gsc_custom.hpp"
-#include "loader/component_loader.hpp"
 #include "dvars.hpp"
+#include "hashes.hpp"
 
+#include "loader/component_loader.hpp"
 #include <utilities/io.hpp>
 #include <utilities/hook.hpp>
 
@@ -751,6 +752,30 @@ namespace mods {
 					logger::write(logger::LOG_TYPE_DEBUG, std::format("mod {}: loaded stringtable file {} -> {:x} ({}x{})", mod_name, stringtable_file_path.string(), tmp.header.name, tmp.header.columns_count, tmp.header.rows_count));
 					csv_files.emplace_back(tmp);
 				}
+				else if (!_strcmpi("hashes", type_val))
+				{
+					auto path_mb = member.FindMember("path");
+
+					if (path_mb == member.MemberEnd() || !path_mb->value.IsString())
+					{
+						logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a hashes storage without a path", mod_name));
+						return false;
+					}
+
+					auto format_mb = member.FindMember("format");
+					hashes::hashes_file_format format;
+
+					if (format_mb == member.MemberEnd() || !format_mb->value.IsString() || (format = hashes::get_format_idx(format_mb->value.GetString())) == hashes::HFF_COUNT)
+					{
+						logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a hashes storage without a valid format", mod_name));
+						return false;
+					}
+
+					std::filesystem::path path_cfg = path_mb->value.GetString();
+					auto path = path_cfg.is_absolute() ? path_cfg : (mod_path / path_cfg);
+
+					return hashes::load_file(path, format);
+				}
 				else
 				{
 					logger::write(logger::LOG_TYPE_ERROR, std::format("mod {} is load data member with an unknown type '{}'", mod_name, type_val));
@@ -1004,7 +1029,10 @@ namespace mods {
 								continue;
 							}
 
-							if (!read_data_entry(member, mod_name, mod_path))
+							auto ignore_error_mb = member.FindMember("ignore_error");
+							bool ignore_error = ignore_error_mb != member.MemberEnd() && ignore_error_mb->value.IsBool() && ignore_error_mb->value.GetBool();
+
+							if (!read_data_entry(member, mod_name, mod_path) && !ignore_error)
 							{
 								mod_errors++;
 							}
