@@ -92,7 +92,7 @@ namespace lua {
 
 	int lua_unsafe_function_stub(void* state)
 	{
-		std::once_flag f{};
+		static std::once_flag f{};
 
 		std::call_once(f, []() { logger::write(logger::LOG_TYPE_ERROR, "calling of a disabled lua unsafe method, these methods can enabled in the config file."); });
 		return 0;

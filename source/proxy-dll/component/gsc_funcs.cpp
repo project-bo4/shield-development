@@ -1411,7 +1411,7 @@ namespace gsc_funcs
 
 			for (size_t i = 0; i < script_obj->exports_count; i++)
 			{
-				game::GSC_EXPORT_ITEM* exp = reinterpret_cast<game::GSC_EXPORT_ITEM*>(script_obj->magic + script_obj->exports_offset);
+				game::GSC_EXPORT_ITEM* exp = reinterpret_cast<game::GSC_EXPORT_ITEM*>(script_obj->magic + script_obj->exports_offset) + i;
 
 				if (rloc < exp->address)
 				{
