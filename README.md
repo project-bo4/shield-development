@@ -9,20 +9,23 @@ A very experimental modification platform for Call of Duty®: Black Ops 4 run by
 As of May11, 2023 we merged 'demonware' branch into 'master'. it includes a built-in demonware server emulator which allows player to start game without connection to official online servers.
 
 
-## INSTRUCTION
+## INSTRUCTIONS
 
-> you should have publisher files required for playing online under LPC folder of your game directory.
+> You should have publisher files required for playing online under LPC folder of your game directory.
 > if its not the case then start original game through battlenet launcher once to get those downloaded.
 
-1- clone repository with its sub-modules and use generate.bat to make visual studio solution then compile project and copy ``d3d11.dll`` into your bo4 folder.
+1- Clone repository with its sub-modules and use generate.bat to make visual studio solution then compile project and copy ``d3d11.dll`` into your bo4 folder.
 
-2- start BlackOps4.exe
+2- Start BlackOps4.exe
 
-*in case you wanted to revert back to original battlenet servers just delete ``d3d11.dll``. you can put it back later whenever you want to re-install client.*
+*In case you wanted to revert back to original battlenet servers just delete ``d3d11.dll``. you can put it back later whenever you want to re-install client.*
 
+## SHIELD DOCUMENTATION
+
+Documentation on shield can be found [Here](https://shield-bo4.gitbook.io/docs).
 
 ## SUBMITTING ISSUES
-github issues section is only for reporting programmatically errors of client. please dont use it for requesting features or seeking help with personal issues such as faulty game data or similar problems. use battlenet's scan and repair feature to fix those problems. 
+Github issues section is only for reporting programmatically errors of client. please dont use it for requesting features or seeking help with personal issues such as faulty game data or similar problems. use battlenet's scan and repair feature to fix those problems. 
 
 
 ## NOTES
@@ -38,10 +41,10 @@ github issues section is only for reporting programmatically errors of client. p
 - [x] Online Battlenet Connection Requirement Removal
 - [x] Built-in Demonware Server Emulation
 - [x] BlackBox Crash Reporting Component
-- [ ] Enable Aim-Assist for Game Controllers
 - [x] In-game Interactable Console
+- [x] Gsc & Lua Modding Support
+- [ ] Enable Aim-Assist for Game Controllers
 - [ ] Miscellaneous Features such as 1st person view fov 
-
 - [ ] Fix *uncommon* runtime black screen issue along other instabilities
 
 ### SERVER-SIDE:
