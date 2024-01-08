@@ -1115,6 +1115,7 @@ namespace mods {
 	}
 
 	utilities::hook::detour db_find_xasset_header_hook;
+	utilities::hook::detour db_does_xasset_exist_hook;
 	utilities::hook::detour scr_gsc_obj_link_hook;
 	utilities::hook::detour hksl_loadfile_hook;
 
@@ -1141,6 +1142,31 @@ namespace mods {
 		}
 
 		return db_find_xasset_header_hook.invoke<void*>(type, name, errorIfMissing, waitTime);
+	}
+
+	bool db_does_xasset_exist_stub(xassets::XAssetType type, game::BO4_AssetRef_t* name)
+	{
+		auto& redirect = storage.assets_redirects[type];
+
+		auto replaced = redirect.find(name->hash & 0x7FFFFFFFFFFFFFFF);
+
+		game::BO4_AssetRef_t redirected_name;
+		if (replaced != redirect.end())
+		{
+			// replace xasset
+			redirected_name.hash = replaced->second;
+			redirected_name.null = 0;
+			name = &redirected_name;
+		}
+
+		void* header = storage.get_xasset(type, name->hash);
+
+		if (header)
+		{
+			return true;
+		}
+
+		return db_does_xasset_exist_hook.invoke<bool>(type, name);
 	}
 
 	int scr_gsc_obj_link_stub(game::scriptInstance_t inst, game::GSC_OBJ* prime_obj, bool runScript)
@@ -1236,7 +1262,7 @@ namespace mods {
 
 			// custom assets loading
 			db_find_xasset_header_hook.create(xassets::DB_FindXAssetHeader.get(), db_find_xasset_header_stub);
-
+			db_does_xasset_exist_hook.create(0x142EB6C90_g, db_does_xasset_exist_stub);
 			scr_gsc_obj_link_hook.create(0x142748F10_g, scr_gsc_obj_link_stub);
 			hksl_loadfile_hook.create(0x14375D6A0_g, hksl_loadfile_stub);
 			bg_cache_sync_hook.create(0x1405CE0B0_g, bg_cache_sync_stub);
