@@ -6,11 +6,12 @@
 #include <utilities/hook.hpp>
 
 namespace lua {
+	typedef void (*HksLogFunc)(game::lua_state* s, const char* fmt, ...);
 
 	utilities::hook::detour lual_error_hook;
 	utilities::hook::detour hksi_lual_error_hook;
 
-	void lual_error_stub(void* state, const char* fmt, ...)
+	void lual_error_stub(game::lua_state* state, const char* fmt, ...)
 	{
 		va_list va;
 		va_start(va, fmt);
@@ -23,7 +24,7 @@ namespace lua {
 		lual_error_hook.invoke<void>(state, "%s", buffer);
 	}
 
-	void hksi_lual_error_stub(void* state, const char* fmt, ...)
+	void hksi_lual_error_stub(game::lua_state* state, const char* fmt, ...)
 	{
 		va_list va;
 		va_start(va, fmt);
@@ -34,11 +35,6 @@ namespace lua {
 
 		logger::write(logger::LOG_TYPE_ERROR, std::format("[hksi_lual_error] {}", buffer));
 		hksi_lual_error_hook.invoke<void>(state, "%s", buffer);
-	}
-
-	void ui_interface_error(const char* error)
-	{
-		logger::write(logger::LOG_TYPE_ERROR, "[ui_interface_error] %s", error);
 	}
 
 	void print_out(logger::type type, game::consoleLabel_e label, const char* info)
@@ -75,22 +71,42 @@ namespace lua {
 		}
 	}
 
-	void print_info(game::consoleLabel_e label, const char* info)
+	void lua_engine_print(logger::type type, game::lua_state* s)
 	{
-		print_out(logger::LOG_TYPE_INFO, label, info);
+		game::hks_object* base = s->m_apistack.base;
+		game::hks_object* top = s->m_apistack.top;
+
+		game::consoleLabel_e label = game::CON_LABEL_TEMP;
+		const char* info = "";
+
+		if (base < top)
+		{
+			label = (game::consoleLabel_e)game::hks_obj_tonumber(s, base);
+		}
+		if (base + 1 < top)
+		{
+			info = game::hks_obj_tolstring(s, base + 1, nullptr);
+		}
+
+		print_out(type, label, info);
 	}
 
-	void print_warning(game::consoleLabel_e label, const char* info)
+	void lua_engine_print_info(game::lua_state* s)
 	{
-		print_out(logger::LOG_TYPE_WARN, label, info);
+		lua_engine_print(logger::LOG_TYPE_INFO, s);
 	}
 
-	void print_error(game::consoleLabel_e label, const char* info)
+	void lua_engine_print_warning(game::lua_state* s)
 	{
-		print_out(logger::LOG_TYPE_ERROR, label, info);
+		lua_engine_print(logger::LOG_TYPE_WARN, s);
 	}
 
-	int lua_unsafe_function_stub(void* state)
+	void lua_engine_print_error(game::lua_state* s)
+	{
+		lua_engine_print(logger::LOG_TYPE_ERROR, s);
+	}
+
+	int lua_unsafe_function_stub(game::lua_state* state)
 	{
 		static std::once_flag f{};
 
@@ -150,6 +166,25 @@ namespace lua {
 
 	}
 
+	int lui_panic_stub(game::lua_state* vm)
+	{
+		game::hks_object* arg0 = vm->m_apistack.top - 1;
+
+		const char* error_message = "";
+		if (arg0 >= vm->m_apistack.base)
+		{
+			error_message = game::hks_obj_tolstring(vm, arg0, nullptr);
+
+			logger::write(logger::LOG_TYPE_ERROR, std::format("[lui_panic] {}", error_message));
+		}
+		else {
+			logger::write(logger::LOG_TYPE_ERROR, std::format("[lui_panic] empty"));
+		}
+
+		game::Lua_CoD_LuaStateManager_Error(100007, error_message, vm);
+		return 0;
+	}
+
 	class component final : public component_interface
 	{
 	public:
@@ -157,16 +192,16 @@ namespace lua {
 		{
 			if (utilities::json_config::ReadBoolean("lua", "info", false))
 			{
-				utilities::hook::jump(0x143A96E10_g, print_info);
+				utilities::hook::jump(0x143956010_g, lua_engine_print_info);
 
 			}
 			if (utilities::json_config::ReadBoolean("lua", "error", false))
 			{
 				hksi_lual_error_hook.create(0x143757780_g, hksi_lual_error_stub);
-				utilities::hook::jump(0x1439B4CF0_g, ui_interface_error);
 				lual_error_hook.create(0x14375D410_g, lual_error_stub);
-				utilities::hook::jump(0x143A96E00_g, print_error);
-				utilities::hook::jump(0x143A96E30_g, print_warning);
+				utilities::hook::jump(0x14423A1D0_g, lui_panic_stub);
+				utilities::hook::jump(0x143955FA0_g, lua_engine_print_error);
+				utilities::hook::jump(0x143956090_g, lua_engine_print_warning);
 			}
 
 			patch_unsafe_lua_functions();

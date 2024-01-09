@@ -1199,7 +1199,7 @@ namespace mods {
 		return scr_gsc_obj_link_hook.invoke<int>(inst, prime_obj, runScript);
 	}
 
-	int hksl_loadfile_stub(void* state, const char* filename)
+	int hksl_loadfile_stub(game::lua_state* state, const char* filename)
 	{
 
 		uint64_t hash{};

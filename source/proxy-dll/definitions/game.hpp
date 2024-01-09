@@ -822,6 +822,50 @@ namespace game
 		~scoped_critical_section();
 	};
 
+	struct hks_global {};
+	struct hks_callstack
+	{
+		void* m_records; // hks::CallStack::ActivationRecord*
+		void* m_lastrecord; // hks::CallStack::ActivationRecord*
+		void* m_current; // hks::CallStack::ActivationRecord*
+		const void* m_current_lua_pc; // const hksInstruction*
+		const void* m_hook_return_addr; // const hksInstruction*
+		int32_t m_hook_level;
+	};
+	struct lua_state;
+	struct hks_object
+	{
+		uint32_t t;
+		union {
+			void* ptr;
+			float number;
+			int32_t boolean;
+			uint32_t native;
+			lua_state* thread;
+		} v;
+	};
+	struct hks_api_stack
+	{
+		hks_object* top;
+		hks_object* base;
+		hks_object* alloc_top;
+		hks_object* bottom;
+	};
+
+	struct lua_state
+	{
+		// hks::GenericChunkHeader
+		size_t m_flags;
+		// hks::ChunkHeader
+		void* m_next;
+
+		hks_global* m_global;
+		hks_callstack m_callStack;
+		hks_api_stack m_apistack;
+
+		// ...
+	};
+
 	//////////////////////////////////////////////////////////////////////////
 	//                               SYMBOLS                                //
 	//////////////////////////////////////////////////////////////////////////
@@ -938,8 +982,11 @@ namespace game
 	WEAK symbol<objFileInfo_t[SCRIPTINSTANCE_MAX][650]> gObjFileInfo{ 0x1482EFCD0_g };
 
 	// lua functions
-	WEAK symbol<bool(void* luaVM, const char* file)> Lua_CoD_LoadLuaFile{ 0x143962DF0_g };
-	
+	WEAK symbol<bool(lua_state* luaVM, const char* file)> Lua_CoD_LoadLuaFile{ 0x143962DF0_g };
+	WEAK symbol<void(int code, const char* error, lua_state* s)> Lua_CoD_LuaStateManager_Error{ 0x14398A860_g };
+	WEAK symbol<const char*(lua_state* luaVM, hks_object* obj, size_t* len)> hks_obj_tolstring{ 0x143755730_g };
+	WEAK symbol<float(lua_state* luaVM, const hks_object* obj)> hks_obj_tonumber{ 0x143755A90_g };
+
 	// console labels
 	WEAK symbol<const char*> builtinLabels{ 0x144F11530_g };
 	// gsc types
