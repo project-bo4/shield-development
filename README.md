@@ -22,7 +22,7 @@ As of May11, 2023 we merged 'demonware' branch into 'master'. it includes a buil
 
 ## SHIELD DOCUMENTATION
 
-Documentation on shield can be found [Here](https://shield-bo4.gitbook.io/docs).
+Documentation on shield can be found [Here](https://shield-bo4.gitbook.io/).
 
 ## SUBMITTING ISSUES
 Github issues section is only for reporting programmatically errors of client. please dont use it for requesting features or seeking help with personal issues such as faulty game data or similar problems. use battlenet's scan and repair feature to fix those problems. 
