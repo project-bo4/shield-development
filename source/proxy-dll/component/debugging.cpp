@@ -1,8 +1,10 @@
 #include <std_include.hpp>
 #include "definitions/game.hpp"
+#include "definitions/game_runtime_errors.hpp"
 #include "component/scheduler.hpp"
 #include "loader/component_loader.hpp"
 
+#include <utilities/hook.hpp>
 #include <utilities/string.hpp>
 
 namespace debugging
@@ -17,7 +19,7 @@ namespace debugging
 			{
 				if ((1 << bitNumber) & infoBitmask)
 				{
-					connectionInfoString[bitNumber * 2] = bitNumber + 0x41;
+					connectionInfoString[bitNumber * 2] = (char)(bitNumber + 0x41);
 				}
 				else
 				{
@@ -42,7 +44,7 @@ namespace debugging
 
 			if (!connected) 
 			{
-				float color[4] = { 0.8f, 1.0f, 0.3, 0.8f };
+				float color[4] = { 0.8f, 1.0f, 0.3f, 0.8f };
 
 				const char* sz = get_connectivity_info_string(infoBitmask);
 
@@ -68,11 +70,30 @@ namespace debugging
 		}
 	}
 
+	utilities::hook::detour sys_error_hook;
+
+	void sys_error_stub(uint32_t code, const char* message)
+	{
+		const char* error_message = game::runtime_errors::get_error_message(code);
+
+		if (error_message)
+		{
+			logger::write(logger::LOG_TYPE_ERROR, "[sys_error] %s (%d): %s", error_message, code, message);
+		}
+		else
+		{
+			logger::write(logger::LOG_TYPE_ERROR, "[sys_error] %d: %s", code, message);
+		}
+
+		sys_error_hook.invoke<void>(code, message);
+	}
+
 	class component final : public component_interface
 	{
 	public:
 		void post_unpack() override
 		{
+			sys_error_hook.create(0x143D36CC0_g, sys_error_stub);
 			scheduler::loop(draw_debug_info, scheduler::renderer);
 			scheduler::loop(test_key_catcher, scheduler::main);
 		}
