@@ -200,10 +200,24 @@ namespace
 	}
 }
 
+FILE* originalStdout = nullptr;
+FILE* originalStderr = nullptr;
+
 BOOL WINAPI DllMain(HINSTANCE, const DWORD reason, LPVOID)
 {
+
+#ifdef DEBUG
+		//Add console
+		AllocConsole();
+		AttachConsole(GetCurrentProcessId());
+		freopen_s(&originalStdout, "CONOUT$", "w", stdout); // Redirect stdout to the console
+		freopen_s(&originalStderr, "CONOUT$", "w", stderr); // Redirect stderr to the console
+		SetConsoleTitle("Project-Bo4");
+#endif
+
 	if (reason == DLL_PROCESS_ATTACH)
 	{
+		//console::init(); //start console
 		patch_entry_point();
 	}
 
