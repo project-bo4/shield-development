@@ -29,6 +29,11 @@ namespace xassets
 		byte* buffer{};
 	};
 
+	struct localize_entry_header {
+		const char* string = "";
+		uint64_t name{};
+		uint64_t namepad{};
+	};
 
 	union stringtable_cell_value
 	{
@@ -80,6 +85,8 @@ namespace xassets
 		lua_file_header* lua_file;
 		scriptparsetree_header* scriptparsetree;
 		stringtable_header* stringtable;
+		localize_entry_header* localize;
+		void* ptr;
 	};
 
 	enum XAssetType : byte
@@ -257,4 +264,83 @@ namespace xassets
 		ASSET_TYPE_REPORT = 0xA9,
 		ASSET_TYPE_FULL_COUNT = 0xAA,
 	};
+
+	enum BGCacheTypes : byte
+	{
+		BG_CACHE_TYPE_INVALID = 0,
+		BG_CACHE_TYPE_VEHICLE = 1,
+		BG_CACHE_TYPE_MODEL = 2,
+		BG_CACHE_TYPE_AITYPE = 3,
+		BG_CACHE_TYPE_CHARACTER = 4,
+		BG_CACHE_TYPE_XMODELALIAS = 5,
+		BG_CACHE_TYPE_WEAPON = 6,
+		BG_CACHE_TYPE_GESTURE = 7,
+		BG_CACHE_TYPE_GESTURETABLE = 8,
+		BG_CACHE_TYPE_ZBARRIER = 9,
+		BG_CACHE_TYPE_RUMBLE = 10,
+		BG_CACHE_TYPE_SHELLSHOCK = 11,
+		BG_CACHE_TYPE_STATUSEFFECT = 12,
+		BG_CACHE_TYPE_XCAM = 13,
+		BG_CACHE_TYPE_DESTRUCTIBLE = 14,
+		BG_CACHE_TYPE_STREAMERHINT = 15,
+		BG_CACHE_TYPE_FLOWGRAPH = 16,
+		BG_CACHE_TYPE_XANIM = 17,
+		BG_CACHE_TYPE_SANIM = 18,
+		BG_CACHE_TYPE_SCRIPTBUNDLE = 19,
+		BG_CACHE_TYPE_TALENT = 20,
+		BG_CACHE_TYPE_STATUSICON = 21,
+		BG_CACHE_TYPE_LOCATIONSELECTOR = 22,
+		BG_CACHE_TYPE_MENU = 23,
+		BG_CACHE_TYPE_MATERIAL = 24,
+		BG_CACHE_TYPE_STRING = 25,
+		BG_CACHE_TYPE_EVENTSTRING = 26,
+		BG_CACHE_TYPE_MOVIEFILE = 27,
+		BG_CACHE_TYPE_OBJECTIVE = 28,
+		BG_CACHE_TYPE_FX = 29,
+		BG_CACHE_TYPE_LUI_MENU_DATA = 30,
+		BG_CACHE_TYPE_LUI_ELEM = 31,
+		BG_CACHE_TYPE_LUI_ELEM_UID = 32,
+		BG_CACHE_TYPE_RADIANT_EXPLODER = 33,
+		BG_CACHE_TYPE_SOUNDALIAS = 34,
+		BG_CACHE_TYPE_CLIENT_FX = 35,
+		BG_CACHE_TYPE_CLIENT_TAGFXSET = 36,
+		BG_CACHE_TYPE_CLIENT_LUI_ELEM = 37,
+		BG_CACHE_TYPE_CLIENT_LUI_ELEM_UID = 38,
+		BG_CACHE_TYPE_REQUIRES_IMPLEMENTS = 39,
+		BG_CACHE_TYPE_COUNT
+	};
+
+	struct bg_cache_info_def
+	{
+		BGCacheTypes type;
+		game::BO4_AssetRef_t name;
+		uint64_t asset;
+	};
+
+	struct bg_cache_info
+	{
+		game::BO4_AssetRef_t name{};
+		bg_cache_info_def* def{};
+		int defCount{};
+	};
+
+	struct xasset_type_info {
+		const char* name;
+		uint64_t unk8;
+		uint64_t unk10;
+		game::BO4_AssetRef_t* (*get_name)(game::BO4_AssetRef_t* name, const void* header);
+		void(*set_name)(void* header, game::BO4_AssetRef_t* name);
+	};
+
+	WEAK game::symbol<xasset_type_info> s_XAssetTypeInfo{ 0x14498BB00_g };
+
+	WEAK game::symbol<void(bg_cache_info* cache, int32_t flags)> Demo_AddBGCacheAndRegister{ 0x1405CF5A0_g };
+	WEAK game::symbol<int(BGCacheTypes type, game::BO4_AssetRef_t* name)> BG_Cache_RegisterAndGet{ 0x1405CEC20_g };
+	WEAK game::symbol<BGCacheTypes(const char* name)> BG_Cache_GetTypeIndexInternal{ 0x1405CDBD0_g };
+	BGCacheTypes BG_Cache_GetTypeIndex(const char* name);
+	const char* BG_Cache_GetTypeName(BGCacheTypes type);
+	XAssetType DB_GetXAssetTypeIndex(const char* name);
+	const char* DB_GetXAssetTypeName(XAssetType type);
+
+	WEAK game::symbol<xasset_header(XAssetType type, game::BO4_AssetRef_t* name, bool errorIfMissing, int waittime)> DB_FindXAssetHeader{ 0x142EB75B0_g };
 }
