@@ -81,7 +81,7 @@ namespace game
 		int32_t include_offset;
 		uint16_t string_count;
 		uint16_t exports_count;
-		int32_t ukn20;
+		int32_t start_data;
 		int32_t string_offset;
 		int16_t imports_count;
 		uint16_t fixup_count;
@@ -93,12 +93,12 @@ namespace game
 		int32_t fixup_offset;
 		int32_t globalvar_offset;
 		int32_t script_size;
-		int32_t ukn4c_offset;
+		int32_t requires_implements_offset;
 		int32_t ukn50;
-		int32_t ukn54;
+		int32_t data_length;
 		uint16_t include_count;
 		byte ukn5a;
-		byte ukn4c_count;
+		byte requires_implements_count;
 
 		inline GSC_EXPORT_ITEM* get_exports()
 		{
@@ -183,7 +183,8 @@ namespace game
 		TYPE_REMOVED_THREAD = 0x19,
 		TYPE_FREE = 0x1a,
 		TYPE_THREAD_LIST = 0x1b,
-		TYPE_ENT_LIST = 0x1c
+		TYPE_ENT_LIST = 0x1c,
+		TYPE_COUNT
 	};
 
 
@@ -222,6 +223,39 @@ namespace game
 		ScrVarType_t type;
 	};
 
+	struct ScrVar_t_Info
+	{
+		uint32_t nameType : 3;
+		uint32_t flags : 5;
+		uint32_t refCount : 24;
+	};
+
+	struct ScrVar_t
+	{
+		ScrVarNameIndex_t nameIndex;
+		ScrVar_t_Info _anon_0;
+		ScrVarIndex_t nextSibling;
+		ScrVarIndex_t prevSibling;
+		ScrVarIndex_t parentId;
+		ScrVarIndex_t nameSearchHashList;
+		uint32_t pad0;
+	};
+
+	union ScrVarObjectInfo1_t
+	{
+		uint64_t object_o;
+		unsigned int size;
+		ScrVarIndex_t nextEntId;
+		ScrVarIndex_t self;
+		ScrVarIndex_t free;
+	};
+
+	union ScrVarObjectInfo2_t
+	{
+		uint32_t object_w;
+		ScrVarIndex_t stackId;
+	};
+
 	struct function_stack_t
 	{
 		byte* pos;
@@ -230,6 +264,11 @@ namespace game
 		ScrVarIndex_t threadId;
 		uint16_t localVarCount;
 		uint16_t profileInfoCount;
+	};
+
+	struct function_frame_t
+	{
+		function_stack_t fs;
 	};
 
 	struct ScrVmContext_t
@@ -241,6 +280,48 @@ namespace game
 	};
 
 	typedef void (*VM_OP_FUNC)(scriptInstance_t, function_stack_t*, ScrVmContext_t*, bool*);
+
+
+	struct BO4_scrVarGlob
+	{
+		ScrVarIndex_t* scriptNameSearchHashList;
+		ScrVar_t* scriptVariables;
+		ScrVarObjectInfo1_t* scriptVariablesObjectInfo1;
+		ScrVarObjectInfo2_t* scriptVariablesObjectInfo2;
+		ScrVarValue_t* scriptValues;
+	};
+
+	struct BO4_scrVmPub
+	{
+		void* unk0;
+		void* unk8;
+		void* executionQueueHeap; // HunkUser
+		void* timeByValueQueue; // VmExecutionQueueData_t
+		void* timeByThreadQueue[1024]; // VmExecutionQueue_t
+		void* frameByValueQueue; // VmExecutionQueueData_t
+		void* frameByThreadQueue[1024]; // VmExecutionQueue_t
+		void* timeoutByValueList; // VmExecutionQueueData_t
+		void* timeoutByThreadList[1024]; // VmExecutionQueue_t
+		void* notifyByObjectQueue[1024]; // VmExecutionNotifyQueue_t
+		void* notifyByThreadQueue[1024]; // VmExecutionNotifyQueue_t
+		void* endonByObjectList[1024]; // VmExecutionNotifyQueue_t
+		void* endonByThreadList[1024]; // VmExecutionNotifyQueue_t
+		ScrVarIndex_t* localVars;
+		ScrVarValue_t* maxstack;
+		function_frame_t* function_frame;
+		ScrVarValue_t* top;
+		function_frame_t function_frame_start[64];
+		ScrVarValue_t stack[2048];
+		uint32_t time;
+		uint32_t frame;
+		int function_count;
+		int callNesting;
+		unsigned int inparamcount;
+		bool showError;
+		bool systemInitialized;
+		bool vmInitialized;
+		bool isShutdown;
+	};
 
 	struct objFileInfo_t
 	{
@@ -655,6 +736,135 @@ namespace game
 		MODE_FIRST = 0x0,
 	};
 
+	enum consoleLabel_e : int32_t
+	{
+		CON_LABEL_TEMP = 0x0,
+		CON_LABEL_GFX = 0x2,
+		CON_LABEL_TASKMGR2 = 0x3,
+		CON_LABEL_LIVE = 0x4,
+		CON_LABEL_LIVE_XBOX = 0x5,
+		CON_LABEL_LIVE_PS4 = 0x6,
+		CON_LABEL_MATCHMAKING = 0x7,
+		CON_LABEL_DEMONWARE = 0x8,
+		CON_LABEL_LEADERBOARDS = 0x9,
+		CON_LABEL_LOBBY = 0x0A,
+		CON_LABEL_LOBBYHOST = 0x0B,
+		CON_LABEL_LOBBYCLIENT = 0x0C,
+		CON_LABEL_LOBBYVM = 0x0D,
+		CON_LABEL_MIGRATION = 0x0E,
+		CON_LABEL_IG_MIGRATION_Host = 0x0F,
+		CON_LABEL_IG_MIGRATION_Client = 0x10,
+		CON_LABEL_SCRIPTER = 0x11,
+		CON_LABEL_VM = 0x12,
+		CON_LABEL_DVAR = 0x13,
+		CON_LABEL_TOOL = 0x14,
+		CON_LABEL_ANIM = 0x15,
+		CON_LABEL_NETCHAN = 0x16,
+		CON_LABEL_BGCACHE = 0x17,
+		CON_LABEL_PM = 0x18,
+		CON_LABEL_MAPSWITCH = 0x19,
+		CON_LABEL_AI = 0x1A,
+		CON_LABEL_GADGET = 0x1B,
+		CON_LABEL_SOUND = 0x1C,
+		CON_LABEL_SNAPSHOT = 0x1D,
+		CON_LABEL_PLAYGO = 0x1E,
+		CON_LABEL_LUI = 0x1F,
+		CON_LABEL_LUA = 0x20,
+		CON_LABEL_VOIP = 0x21,
+		CON_LABEL_DEMO = 0x22,
+		CON_LABEL_DB = 0x23,
+		CON_LABEL_HTTP = 0x24,
+		CON_LABEL_DCACHE = 0x25,
+		CON_LABEL_MEM = 0x26,
+		CON_LABEL_CINEMATIC = 0x27,
+		CON_LABEL_DDL = 0x28,
+		CON_LABEL_STORAGE = 0x29,
+		CON_LABEL_STEAM = 0x2A,
+		CON_LABEL_CHKPTSAVE = 0x2B,
+		CON_LABEL_DLOG = 0x2C,
+		CON_LABEL_FILESHARE = 0x2D,
+		CON_LABEL_LPC = 0x2E,
+		CON_LABEL_MARKETING = 0x2F,
+		CON_LABEL_STORE = 0x30,
+		CON_LABEL_TESTING = 0x31,
+		CON_LABEL_LOOT = 0x32,
+		CON_LABEL_MATCHRECORDER = 0x33,
+		CON_LABEL_EXCHANGE = 0x34,
+		CON_LABEL_SCRIPTERROR = 0x35,
+		CON_LABEL_PLAYOFTHEMATCH = 0x36,
+		CON_LABEL_FILESYS = 0x37,
+		CON_LABEL_JSON = 0x38,
+		CON_LABEL_CUSTOMGAMES = 0x39,
+		CON_LABEL_GAMEPLAY = 0x3A,
+		CON_LABEL_STREAM = 0x3B,
+		CON_LABEL_XPAK = 0x3C,
+		CON_LABEL_AE = 0x3D,
+		CON_LABEL_STRINGTABLE = 0x3E,
+		CON_LABEL_COUNT = 0x3F
+	};
+
+	enum scoped_critical_section_type : int32_t
+	{
+		SCOPED_CRITSECT_NORMAL = 0x0,
+		SCOPED_CRITSECT_DISABLED = 0x1,
+		SCOPED_CRITSECT_RELEASE = 0x2,
+		SCOPED_CRITSECT_TRY = 0x3,
+	};
+
+	class scoped_critical_section
+	{
+		int32_t _s;
+		bool _hasOwnership;
+		bool _isScopedRelease;
+		scoped_critical_section* _next;
+	public:
+		scoped_critical_section(int32_t s, scoped_critical_section_type type);
+		~scoped_critical_section();
+	};
+
+	struct hks_global {};
+	struct hks_callstack
+	{
+		void* m_records; // hks::CallStack::ActivationRecord*
+		void* m_lastrecord; // hks::CallStack::ActivationRecord*
+		void* m_current; // hks::CallStack::ActivationRecord*
+		const void* m_current_lua_pc; // const hksInstruction*
+		const void* m_hook_return_addr; // const hksInstruction*
+		int32_t m_hook_level;
+	};
+	struct lua_state;
+	struct hks_object
+	{
+		uint32_t t;
+		union {
+			void* ptr;
+			float number;
+			int32_t boolean;
+			uint32_t native;
+			lua_state* thread;
+		} v;
+	};
+	struct hks_api_stack
+	{
+		hks_object* top;
+		hks_object* base;
+		hks_object* alloc_top;
+		hks_object* bottom;
+	};
+
+	struct lua_state
+	{
+		// hks::GenericChunkHeader
+		size_t m_flags;
+		// hks::ChunkHeader
+		void* m_next;
+
+		hks_global* m_global;
+		hks_callstack m_callStack;
+		hks_api_stack m_apistack;
+
+		// ...
+	};
 
 	//////////////////////////////////////////////////////////////////////////
 	//                               SYMBOLS                                //
@@ -691,6 +901,10 @@ namespace game
 	// Main Functions
 	WEAK symbol<void(const char* file, int line, int code, const char* fmt, ...)> Com_Error_{ 0x14288B410_g };
 
+	// mutex
+	WEAK symbol<void(scoped_critical_section* sec, int32_t s, scoped_critical_section_type type)> ScopedCriticalSectionConstructor{ 0x14289E3C0_g };
+	WEAK symbol<void(scoped_critical_section* sec)> ScopedCriticalSectionDestructor{ 0x14289E440_g };
+
 	// CMD
 	WEAK symbol<void(int localClientNum, const char* text)> Cbuf_AddText{ 0x143CDE880_g };
 
@@ -716,6 +930,8 @@ namespace game
 	WEAK symbol<bool()> Com_IsInGame{ 0x14288FDB0_g };
 	WEAK symbol<bool()> Com_IsRunningUILevel{ 0x14288FDF0_g };
 	WEAK symbol<eModes()> Com_SessionMode_GetMode{ 0x14289EFF0_g };
+	WEAK symbol<eModes(const char* str)> Com_SessionMode_GetModeForAbbreviation{ 0x14289F000_g };
+	WEAK symbol<const char*(eModes mode)> Com_SessionMode_GetAbbreviationForMode{0x14289EC70_g};
 
 	WEAK symbol<int> keyCatchers{ 0x148A53F84_g };
 	WEAK symbol<PlayerKeyState> playerKeys{ 0x148A3EF80_g };
@@ -737,11 +953,20 @@ namespace game
 	WEAK symbol<int64_t(scriptInstance_t inst, unsigned int index)> ScrVm_GetInt{ 0x142773B50_g };
 	WEAK symbol<const char*(scriptInstance_t inst, unsigned int index)> ScrVm_GetString{ 0x142774840_g };
 	WEAK symbol<void(scriptInstance_t inst, unsigned int index, vec3_t* vector)> ScrVm_GetVector{ 0x142774E40_g };
-	WEAK symbol<int32_t(scriptInstance_t inst, unsigned int index)> ScrVm_GetConstString{ 0x142772E10_g };
+	WEAK symbol<ScrVarIndex_t(scriptInstance_t inst, unsigned int index)> ScrVm_GetConstString{ 0x142772E10_g };
 	WEAK symbol<uint32_t(scriptInstance_t inst)> ScrVm_GetNumParam{ 0x142774440_g };
 	WEAK symbol<ScrVarType_t(scriptInstance_t inst, unsigned int index)> ScrVm_GetPointerType{ 0x1427746E0_g };
 	WEAK symbol<ScrVarType_t(scriptInstance_t inst, unsigned int index)> ScrVm_GetType{ 0x142774A20_g };
-
+	WEAK symbol<uint32_t(scriptInstance_t inst)> ScrVm_AddStruct{ 0x14276EF00_g };
+	WEAK symbol<void(scriptInstance_t inst, uint32_t structId, uint32_t name)> ScrVm_SetStructField{ 0x142778450_g };
+	WEAK symbol<void(scriptInstance_t inst)> ScrVm_AddToArray{ 0x14276F1C0_g };
+	WEAK symbol<void(scriptInstance_t inst, BO4_AssetRef_t* name)> ScrVm_AddToArrayStringIndexed{ 0x14276F230_g };
+	WEAK symbol<void(scriptInstance_t inst, vec3_t* vec)> ScrVm_AddVector{ 0x14276F490_g };
+	WEAK symbol<void(scriptInstance_t inst)> ScrVar_PushArray{ 0x142775CF0_g };
+	WEAK symbol<const char* (ScrVarIndex_t index)> ScrStr_ConvertToString{ 0x142759030_g };
+	WEAK symbol<ScrVarIndex_t(scriptInstance_t inst, ScrVarIndex_t parentId, ScrVarNameIndex_t index)> ScrVar_NewVariableByIndex{ 0x142760440_g };
+	WEAK symbol<void(scriptInstance_t inst, ScrVarIndex_t id, ScrVarValue_t* value)> ScrVar_SetValue{ 0x1427616B0_g };
+	
 	WEAK symbol<BuiltinFunction(uint32_t canonId, int* type, int* min_args, int* max_args)> CScr_GetFunction{ 0x141F13140_g };
 	WEAK symbol<BuiltinFunction(uint32_t canonId, int* type, int* min_args, int* max_args)> Scr_GetFunction{ 0x1433AF840_g };
 	WEAK symbol<void*(uint32_t canonId, int* type, int* min_args, int* max_args)> CScr_GetMethod{ 0x141F13650_g };
@@ -749,13 +974,26 @@ namespace game
 
 	WEAK symbol<void(uint64_t code, scriptInstance_t inst, char* unused, bool terminal)> ScrVm_Error{ 0x142770330_g };
 	WEAK symbol<BO4_scrVarPub> scrVarPub{ 0x148307880_g };
+	WEAK symbol<BO4_scrVarGlob> scrVarGlob{ 0x148307830_g };
+	WEAK symbol<BO4_scrVmPub> scrVmPub{ 0x148307AA0_g };
 
 	WEAK symbol<VM_OP_FUNC> gVmOpJumpTable{ 0x144EED340_g };
 	WEAK symbol<uint32_t> gObjFileInfoCount{ 0x1482F76B0_g };
 	WEAK symbol<objFileInfo_t[SCRIPTINSTANCE_MAX][650]> gObjFileInfo{ 0x1482EFCD0_g };
-	     
+
+	// lua functions
+	WEAK symbol<bool(lua_state* luaVM, const char* file)> Lua_CoD_LoadLuaFile{ 0x143962DF0_g };
+	WEAK symbol<void(int code, const char* error, lua_state* s)> Lua_CoD_LuaStateManager_Error{ 0x14398A860_g };
+	WEAK symbol<const char*(lua_state* luaVM, hks_object* obj, size_t* len)> hks_obj_tolstring{ 0x143755730_g };
+	WEAK symbol<float(lua_state* luaVM, const hks_object* obj)> hks_obj_tonumber{ 0x143755A90_g };
+
+	// console labels
+	WEAK symbol<const char*> builtinLabels{ 0x144F11530_g };
+	// gsc types
+	WEAK symbol<const char*> var_typename{ 0x144EED240_g };
+
 	WEAK symbol<void(BO4_AssetRef_t* cmdName, xcommand_t function, cmd_function_t* allocedCmd)> Cmd_AddCommandInternal{0x143CDEE80_g};
-	
+
 #define Cmd_AddCommand(name, function) \
     static game::cmd_function_t __cmd_func_##function;  \
     game::BO4_AssetRef_t __cmd_func_name_##function { (int64_t)fnv1a::generate_hash(name), 0 }; \
@@ -769,4 +1007,12 @@ namespace game
 	
 #define Com_Error(code, fmt, ...) \
 		Com_Error_(__FILE__, __LINE__, code, fmt, ##__VA_ARGS__)
+
+	class scoped_critical_section_guard_lock
+	{
+
+
+
+
+	};
 }

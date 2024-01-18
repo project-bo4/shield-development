@@ -9,8 +9,10 @@ namespace gsc_funcs
 	extern bool enable_dev_func;
 
 	uint32_t canon_hash(const char* str);
-
-	constexpr uint64_t custom_error_id = 0x42693201;
-
+	uint32_t canon_hash_pattern(const char* str);
+	
 	void gsc_error(const char* message, game::scriptInstance_t inst, bool terminal, ...);
+	const char* lookup_hash(game::scriptInstance_t inst, const char* type, uint64_t hash);
+
+	void ScrVm_AddToArrayIntIndexed(game::scriptInstance_t inst, uint64_t index);
 }

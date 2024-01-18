@@ -6,8 +6,10 @@
 
 #include "gsc_funcs.hpp"
 #include "gsc_custom.hpp"
-#include "loader/component_loader.hpp"
+#include "dvars.hpp"
+#include "hashes.hpp"
 
+#include "loader/component_loader.hpp"
 #include <utilities/io.hpp>
 #include <utilities/hook.hpp>
 
@@ -148,6 +150,9 @@ namespace mods {
 		{
 			xassets::lua_file_header header{};
 
+			std::unordered_set<uint64_t> hooks{};
+			uint64_t noext_name{};
+			std::unordered_set<uint64_t> hooks_post{};
 			std::string data{};
 
 			auto* get_header()
@@ -172,6 +177,28 @@ namespace mods {
 				return &header;
 			}
 		};
+		struct localize
+		{
+			xassets::localize_entry_header header{};
+
+			std::string str{};
+
+			auto* get_header()
+			{
+				header.string = str.data();
+
+				return &header;
+			}
+
+		};
+		struct cache_entry
+		{
+			game::BO4_AssetRef_t name{};
+			xassets::BGCacheTypes type{};
+			std::unordered_set<game::eModes> hooks_modes{};
+			std::unordered_set<uint64_t> hooks_map{};
+			std::unordered_set<uint64_t> hooks_gametype{};
+		};
 
 
 		class mod_storage
@@ -183,6 +210,18 @@ namespace mods {
 			std::vector<raw_file> raw_files{};
 			std::vector<lua_file> lua_files{};
 			std::vector<string_table_file> csv_files{};
+			std::vector<localize> localizes{};
+			std::vector<cache_entry> cache_entries{};
+			std::unordered_map<int64_t, int64_t> assets_redirects[xassets::ASSET_TYPE_COUNT] = {};
+			std::vector<xassets::bg_cache_info_def> custom_cache_entries{};
+
+			xassets::bg_cache_info custom_cache
+			{
+				.name
+				{
+					.hash = (int64_t)fnv1a::generate_hash("shield_cache") // 2c4f76fcf5cfbebd
+				}
+			};
 
 			~mod_storage()
 			{
@@ -199,6 +238,13 @@ namespace mods {
 				gsc_files.clear();
 				lua_files.clear();
 				csv_files.clear();
+				localizes.clear();
+				cache_entries.clear();
+
+				for (auto& redirect : assets_redirects)
+				{
+					redirect.clear();
+				}
 
 				for (char* str : allocated_strings)
 				{
@@ -215,6 +261,54 @@ namespace mods {
 				allocated_strings.emplace_back(str);
 
 				return str;
+			}
+
+			void sync_cache_entries()
+			{
+				std::lock_guard lg{ load_mutex };
+				custom_cache.defCount = 0;
+				custom_cache.def = nullptr;
+				custom_cache_entries.clear();
+
+				if (!cache_entries.size())
+				{
+					return; // nothing to sync
+				}
+
+				game::dvar_t* sv_mapname = dvars::find_dvar("sv_mapname");
+				game::dvar_t* g_gametype = dvars::find_dvar("g_gametype");
+
+				if (!sv_mapname || !g_gametype)
+				{
+					logger::write(logger::LOG_TYPE_ERROR, "Can't find bgcache dvars");
+					return;
+				}
+
+				std::string mapname = dvars::get_value_string(sv_mapname, &sv_mapname->value->current);
+				std::string gametype = dvars::get_value_string(g_gametype, &g_gametype->value->current);
+				game::eModes mode = game::Com_SessionMode_GetMode();
+
+				uint64_t mapname_hash = fnv1a::generate_hash(mapname.data());
+				uint64_t gametype_hash = fnv1a::generate_hash(gametype.data());
+
+				int count = 0;
+				for (auto& entry : cache_entries)
+				{
+					if (
+						entry.hooks_modes.find(mode) != entry.hooks_modes.end()
+						|| entry.hooks_map.find(mapname_hash) != entry.hooks_map.end()
+						|| entry.hooks_gametype.find(gametype_hash) != entry.hooks_gametype.end()
+						)
+					{
+						auto& ref = custom_cache_entries.emplace_back();
+						ref.type = entry.type;
+						ref.name.hash = entry.name.hash;
+						count++;
+					}
+				}
+				custom_cache.def = custom_cache_entries.data();
+				custom_cache.defCount = (int)custom_cache_entries.size();
+				logger::write(logger::LOG_TYPE_DEBUG, "sync %d custom bgcache entries", count);
 			}
 
 			void* get_xasset(xassets::XAssetType type, uint64_t name)
@@ -251,6 +345,14 @@ namespace mods {
 					auto it = std::find_if(csv_files.begin(), csv_files.end(), [name](const string_table_file& file) { return file.header.name == name; });
 
 					if (it == csv_files.end()) return nullptr;
+
+					return it->get_header();
+				}
+				case xassets::ASSET_TYPE_LOCALIZE_ENTRY:
+				{
+					auto it = std::find_if(localizes.begin(), localizes.end(), [name](const localize& file) { return file.header.name == name; });
+
+					if (it == localizes.end()) return nullptr;
 
 					return it->get_header();
 				}
@@ -391,6 +493,27 @@ namespace mods {
 					logger::write(logger::LOG_TYPE_DEBUG, std::format("mod {}: loaded raw file {} -> {:x}", mod_name, raw_file_path.string(), tmp.header.name));
 					raw_files.emplace_back(tmp);
 				}
+				else if (!_strcmpi("localizeentry", type_val))
+				{
+					auto name_mb = member.FindMember("name");
+					auto value_mb = member.FindMember("value");
+
+					if (
+						name_mb == member.MemberEnd() || value_mb == member.MemberEnd()
+						|| !name_mb->value.IsString() || !value_mb->value.IsString()
+						)
+					{
+						logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a bad localized entry def, missing/bad name or value", mod_name));
+						return false;
+					}
+
+					localize tmp{};
+					tmp.str = value_mb->value.GetString();
+					tmp.header.name = fnv1a::generate_hash_pattern(name_mb->value.GetString());
+
+					logger::write(logger::LOG_TYPE_DEBUG, std::format("mod {}: loaded localized entry {:x}", mod_name, tmp.header.name));
+					localizes.emplace_back(tmp);
+				}
 				else if (!_strcmpi("luafile", type_val))
 				{
 					auto name_mb = member.FindMember("name");
@@ -408,7 +531,55 @@ namespace mods {
 					lua_file tmp{};
 					std::filesystem::path path_cfg = path_mb->value.GetString();
 					auto lua_file_path = path_cfg.is_absolute() ? path_cfg : (mod_path / path_cfg);
-					tmp.header.name = fnv1a::generate_hash_pattern(name_mb->value.GetString());
+					// it injects the name without the .lua and load the name with the .lua, good luck to replace with an unknown hash!
+					tmp.noext_name = fnv1a::generate_hash_pattern(name_mb->value.GetString());
+					tmp.header.name = fnv1a::generate_hash(".lua", tmp.noext_name);
+
+					auto hooks = member.FindMember("hooks_pre");
+
+					if (hooks != member.MemberEnd())
+					{
+						// no hooks might not be an error, to replace a script for example
+
+						if (!hooks->value.IsArray())
+						{
+							logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a bad luafile pre hook def, not an array for {}", mod_name, lua_file_path.string()));
+							return false;
+						}
+
+						for (auto& hook : hooks->value.GetArray())
+						{
+							if (!hook.IsString())
+							{
+								logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a bad luafile pre hook def, not a string for {}", mod_name, lua_file_path.string()));
+								return false;
+							}
+
+							tmp.hooks.insert(fnv1a::generate_hash_pattern(hook.GetString()));
+						}
+					}
+
+					auto hooks_post = member.FindMember("hooks_post");
+					
+					if (hooks_post != member.MemberEnd())
+					{
+						if (!hooks_post->value.IsArray())
+						{
+							logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a bad luafile post hook def, not an array for {}", mod_name, lua_file_path.string()));
+							return false;
+						}
+
+						for (auto& hook : hooks_post->value.GetArray())
+						{
+							if (!hook.IsString())
+							{
+								logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a bad luafile post hook def, not a string for {}", mod_name, lua_file_path.string()));
+								return false;
+							}
+
+							tmp.hooks_post.insert(fnv1a::generate_hash_pattern(hook.GetString()));
+						}
+					}
 
 					if (!utilities::io::read_file(lua_file_path.string(), &tmp.data))
 					{
@@ -416,7 +587,7 @@ namespace mods {
 						return false;
 					}
 
-					logger::write(logger::LOG_TYPE_DEBUG, std::format("mod {}: loaded lua file {} -> {:x}", mod_name, lua_file_path.string(), tmp.header.name));
+					logger::write(logger::LOG_TYPE_DEBUG, std::format("mod {}: loaded lua file {} -> x64:{:x}.lua ({:x})", mod_name, lua_file_path.string(), tmp.noext_name, tmp.header.name));
 					lua_files.emplace_back(tmp);
 				}
 				else if (!_strcmpi("stringtable", type_val))
@@ -448,7 +619,29 @@ namespace mods {
 
 					std::stringstream stream{ tmp.data };
 
-					doc.Load(stream, rapidcsv::LabelParams(-1, -1));
+					auto separator_mb = member.FindMember("separator");
+
+					char sep = ',';
+
+					if (separator_mb != member.MemberEnd())
+					{
+						if (!separator_mb->value.IsString())
+						{
+							logger::write(logger::LOG_TYPE_ERROR, std::format("bad separator type for stringtable file {} for mod {}", stringtable_file_path.string(), mod_name));
+							return false;
+						}
+						const char* sepval = separator_mb->value.GetString();
+
+						if (!sepval[0] || sepval[1])
+						{
+							logger::write(logger::LOG_TYPE_ERROR, std::format("bad separator for stringtable file {} for mod {}, a separator should contain only one character", stringtable_file_path.string(), mod_name));
+							return false;
+						}
+
+						sep = *sepval;
+					}
+
+					doc.Load(stream, rapidcsv::LabelParams(-1, -1), rapidcsv::SeparatorParams(sep));
 
 					size_t rows_count_tmp = doc.GetRowCount();
 					tmp.header.rows_count = rows_count_tmp != 0 ? (int32_t)(rows_count_tmp - 1) : 0;
@@ -556,14 +749,216 @@ namespace mods {
 						}
 					}
 					
-					logger::write(logger::LOG_TYPE_DEBUG, std::format("mod {}: loaded stringtable file {} -> {:x}", mod_name, stringtable_file_path.string(), tmp.header.name));
+					logger::write(logger::LOG_TYPE_DEBUG, std::format("mod {}: loaded stringtable file {} -> {:x} ({}x{})", mod_name, stringtable_file_path.string(), tmp.header.name, tmp.header.columns_count, tmp.header.rows_count));
 					csv_files.emplace_back(tmp);
+				}
+				else if (!_strcmpi("hashes", type_val))
+				{
+					auto path_mb = member.FindMember("path");
+
+					if (path_mb == member.MemberEnd() || !path_mb->value.IsString())
+					{
+						logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a hashes storage without a path", mod_name));
+						return false;
+					}
+
+					auto format_mb = member.FindMember("format");
+					hashes::hashes_file_format format;
+
+					if (format_mb == member.MemberEnd() || !format_mb->value.IsString() || (format = hashes::get_format_idx(format_mb->value.GetString())) == hashes::HFF_COUNT)
+					{
+						logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a hashes storage without a valid format", mod_name));
+						return false;
+					}
+
+					std::filesystem::path path_cfg = path_mb->value.GetString();
+					auto path = path_cfg.is_absolute() ? path_cfg : (mod_path / path_cfg);
+
+					return hashes::load_file(path, format);
 				}
 				else
 				{
 					logger::write(logger::LOG_TYPE_ERROR, std::format("mod {} is load data member with an unknown type '{}'", mod_name, type_val));
 					return false;
 				}
+
+				return true;
+			}
+
+			bool read_cache_entry(rapidjson::Value& member, const char* mod_name, const std::filesystem::path& mod_path)
+			{
+				auto type = member.FindMember("type");
+
+				if (type == member.MemberEnd() || !type->value.IsString())
+				{
+					logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a cache member without a valid type", mod_name));
+					return false;
+				}
+
+				auto name = member.FindMember("name");
+
+				if (name == member.MemberEnd() || !name->value.IsString())
+				{
+					logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a cache member without a valid name", mod_name));
+					return false;
+				}
+
+				const char* name_val = name->value.GetString();
+				const char* type_val = type->value.GetString();
+
+				xassets::BGCacheTypes bgtype = xassets::BG_Cache_GetTypeIndex(type_val);
+
+				if (!bgtype)
+				{
+					logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a cache member with a bad type: {}", mod_name, type_val));
+					return false;
+				}
+
+				cache_entry tmp{};
+
+				tmp.name.hash = fnv1a::generate_hash_pattern(name_val);
+				tmp.type = bgtype;
+
+				auto hook_map = member.FindMember("map");
+				auto hook_mode = member.FindMember("mode");
+				auto hook_gametype = member.FindMember("gametype");
+
+				if (hook_map != member.MemberEnd())
+				{
+					if (hook_map->value.IsArray())
+					{
+						auto data_array = hook_map->value.GetArray();
+
+						for (rapidjson::Value& hookmember : data_array)
+						{
+							if (!hookmember.IsString())
+							{
+								logger::write(logger::LOG_TYPE_ERROR, std::format("mod {} is containing a cache member with a bad map hook", mod_name));
+								continue;
+							}
+							tmp.hooks_map.insert(fnv1a::generate_hash(hookmember.GetString()));
+						}
+					}
+					else if (hook_map->value.IsString())
+					{
+						tmp.hooks_map.insert(fnv1a::generate_hash(hook_map->value.GetString()));
+					}
+					else
+					{
+						logger::write(logger::LOG_TYPE_ERROR, std::format("mod {} is containing a cache member with a bad map hook", mod_name));
+						return false;
+					}
+				}
+
+				if (hook_mode != member.MemberEnd())
+				{
+					if (hook_mode->value.IsArray())
+					{
+						auto data_array = hook_mode->value.GetArray();
+
+						for (rapidjson::Value& hookmember : data_array)
+						{
+							if (!hookmember.IsString())
+							{
+								logger::write(logger::LOG_TYPE_ERROR, std::format("mod {} is containing a cache member with a bad mode hook", mod_name));
+								continue;
+							}
+							game::eModes loaded = game::Com_SessionMode_GetModeForAbbreviation(hookmember.GetString());
+							if (loaded == game::eModes::MODE_COUNT)
+							{
+								logger::write(logger::LOG_TYPE_ERROR, std::format("mod {} is containing a cache member with a bad mode hook", mod_name));
+								continue;
+							}
+							tmp.hooks_modes.insert(loaded);
+						}
+					}
+					else if (hook_mode->value.IsString())
+					{
+						game::eModes loaded = game::Com_SessionMode_GetModeForAbbreviation(hook_mode->value.GetString());
+						if (loaded == game::eModes::MODE_COUNT)
+						{
+							logger::write(logger::LOG_TYPE_ERROR, std::format("mod {} is containing a cache member with a bad mode hook", mod_name));
+							return false;
+						}
+						tmp.hooks_modes.insert(loaded);
+					}
+					else
+					{
+						logger::write(logger::LOG_TYPE_ERROR, std::format("mod {} is containing a cache member with a bad mode hook", mod_name));
+						return false;
+					}
+				}
+
+				if (hook_gametype != member.MemberEnd())
+				{
+					if (hook_gametype->value.IsArray())
+					{
+						auto data_array = hook_gametype->value.GetArray();
+
+						for (rapidjson::Value& hookmember : data_array)
+						{
+							if (!hookmember.IsString())
+							{
+								logger::write(logger::LOG_TYPE_ERROR, std::format("mod {} is containing a cache member with a bad gametype hook", mod_name));
+								continue;
+							}
+							tmp.hooks_gametype.insert(fnv1a::generate_hash(hookmember.GetString()));
+						}
+					}
+					else if (hook_gametype->value.IsString())
+					{
+						tmp.hooks_gametype.insert(fnv1a::generate_hash(hook_gametype->value.GetString()));
+					}
+					else
+					{
+						logger::write(logger::LOG_TYPE_ERROR, std::format("mod {} is containing a cache member with a bad gametype hook", mod_name));
+						return false;
+					}
+				}
+
+				cache_entries.push_back(tmp);
+
+				return true;
+			}
+			bool read_redirect_entry(rapidjson::Value& member, const char* mod_name, const std::filesystem::path& mod_path)
+			{
+				auto type = member.FindMember("type");
+
+				if (type == member.MemberEnd() || !type->value.IsString())
+				{
+					logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a redirect member without a valid type", mod_name));
+					return false;
+				}
+
+				auto origin = member.FindMember("origin");
+
+				if (origin == member.MemberEnd() || !origin->value.IsString())
+				{
+					logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a redirect member without a valid origin", mod_name));
+					return false;
+				}
+
+				auto target = member.FindMember("target");
+
+				if (target == member.MemberEnd() || !target->value.IsString())
+				{
+					logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a redirect member without a valid target", mod_name));
+					return false;
+				}
+
+				xassets::XAssetType assettype = xassets::DB_GetXAssetTypeIndex(type->value.GetString());
+
+				if (assettype == xassets::ASSET_TYPE_COUNT)
+				{
+					logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a redirect member without a valid type: {}", mod_name, type->value.GetString()));
+					return false;
+				}
+
+				int64_t from = fnv1a::generate_hash_pattern(origin->value.GetString());
+				int64_t to = fnv1a::generate_hash_pattern(target->value.GetString());
+				assets_redirects[assettype][from] = to;
+
+				logger::write(logger::LOG_TYPE_DEBUG, std::format("mod {}: loaded redirect {:x} -> {:x} ({})", mod_name, from, to, xassets::DB_GetXAssetTypeName(assettype)));
 
 				return true;
 			}
@@ -634,7 +1029,52 @@ namespace mods {
 								continue;
 							}
 
-							if (!read_data_entry(member, mod_name, mod_path))
+							auto ignore_error_mb = member.FindMember("ignore_error");
+							bool ignore_error = ignore_error_mb != member.MemberEnd() && ignore_error_mb->value.IsBool() && ignore_error_mb->value.GetBool();
+
+							if (!read_data_entry(member, mod_name, mod_path) && !ignore_error)
+							{
+								mod_errors++;
+							}
+						}
+					}
+					auto cache_member = info.FindMember("cache");
+
+					if (cache_member != info.MemberEnd() && cache_member->value.IsArray())
+					{
+						auto data_array = cache_member->value.GetArray();
+
+						for (rapidjson::Value& member : data_array)
+						{
+							if (!member.IsObject())
+							{
+								logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a bad cache member", mod_name));
+								mod_errors++;
+								continue;
+							}
+
+							if (!read_cache_entry(member, mod_name, mod_path))
+							{
+								mod_errors++;
+							}
+						}
+					}
+					auto redirect_member = info.FindMember("redirect");
+
+					if (redirect_member != info.MemberEnd() && redirect_member->value.IsArray())
+					{
+						auto redirect_array = redirect_member->value.GetArray();
+
+						for (rapidjson::Value& member : redirect_array)
+						{
+							if (!member.IsObject())
+							{
+								logger::write(logger::LOG_TYPE_WARN, std::format("mod {} is containing a bad redirect member", mod_name));
+								mod_errors++;
+								continue;
+							}
+
+							if (!read_redirect_entry(member, mod_name, mod_path))
 							{
 								mod_errors++;
 							}
@@ -675,10 +1115,25 @@ namespace mods {
 	}
 
 	utilities::hook::detour db_find_xasset_header_hook;
+	utilities::hook::detour db_does_xasset_exist_hook;
 	utilities::hook::detour scr_gsc_obj_link_hook;
+	utilities::hook::detour hksl_loadfile_hook;
 
 	void* db_find_xasset_header_stub(xassets::XAssetType type, game::BO4_AssetRef_t* name, bool errorIfMissing, int waitTime)
 	{
+		auto& redirect = storage.assets_redirects[type];
+
+		auto replaced = redirect.find(name->hash & 0x7FFFFFFFFFFFFFFF);
+
+		game::BO4_AssetRef_t redirected_name;
+		if (replaced != redirect.end())
+		{
+			// replace xasset
+			redirected_name.hash = replaced->second;
+			redirected_name.null = 0;
+			name = &redirected_name;
+		}
+
 		void* header = storage.get_xasset(type, name->hash);
 
 		if (header)
@@ -687,6 +1142,31 @@ namespace mods {
 		}
 
 		return db_find_xasset_header_hook.invoke<void*>(type, name, errorIfMissing, waitTime);
+	}
+
+	bool db_does_xasset_exist_stub(xassets::XAssetType type, game::BO4_AssetRef_t* name)
+	{
+		auto& redirect = storage.assets_redirects[type];
+
+		auto replaced = redirect.find(name->hash & 0x7FFFFFFFFFFFFFFF);
+
+		game::BO4_AssetRef_t redirected_name;
+		if (replaced != redirect.end())
+		{
+			// replace xasset
+			redirected_name.hash = replaced->second;
+			redirected_name.null = 0;
+			name = &redirected_name;
+		}
+
+		void* header = storage.get_xasset(type, name->hash);
+
+		if (header)
+		{
+			return true;
+		}
+
+		return db_does_xasset_exist_hook.invoke<bool>(type, name);
 	}
 
 	int scr_gsc_obj_link_stub(game::scriptInstance_t inst, game::GSC_OBJ* prime_obj, bool runScript)
@@ -719,23 +1199,76 @@ namespace mods {
 		return scr_gsc_obj_link_hook.invoke<int>(inst, prime_obj, runScript);
 	}
 
+	int hksl_loadfile_stub(game::lua_state* state, const char* filename)
+	{
+
+		uint64_t hash{};
+		if (!storage.lua_files.empty())
+		{
+			hash = fnv1a::generate_hash_pattern(filename);
+		}
+
+		for (auto& lua : storage.lua_files)
+		{
+			// we need to use the hash because filename is x64:HASH or unhashed
+
+			if (lua.hooks.find(hash) != lua.hooks.end())
+			{
+				std::string name = std::format("x64:{:x}.lua", lua.noext_name);
+				if (!game::Lua_CoD_LoadLuaFile(state, name.c_str()))
+				{
+					logger::write(logger::LOG_TYPE_ERROR, std::format("error when loading hook lua {} (pre)", name));
+				}
+			}
+		}
+
+		int load = hksl_loadfile_hook.invoke<int>(state, filename);
+
+		for (auto& lua : storage.lua_files)
+		{
+			// we need to use the hash because filename is x64:HASH or unhashed
+
+			if (lua.hooks_post.find(hash) != lua.hooks_post.end())
+			{
+				std::string name = std::format("x64:{:x}.lua", lua.noext_name);
+				if (!game::Lua_CoD_LoadLuaFile(state, name.c_str()))
+				{
+					logger::write(logger::LOG_TYPE_ERROR, std::format("error when loading hook lua {} (post)", name));
+				}
+			}
+		}
+
+		return load;
+	}
+
+	utilities::hook::detour bg_cache_sync_hook;
+
+	void bg_cache_sync_stub()
+	{
+		storage.sync_cache_entries();
+
+		xassets::Demo_AddBGCacheAndRegister(&storage.custom_cache, 0x16000); 
+		
+		// sync default
+		bg_cache_sync_hook.invoke<void>();
+	}
+
 	class component final : public component_interface
 	{
 	public:
 		void post_unpack() override
 		{
-			// custom assets loading
-			db_find_xasset_header_hook.create(0x142EB75B0_g, db_find_xasset_header_stub);
+			storage.load_mods();
 
+			// custom assets loading
+			db_find_xasset_header_hook.create(xassets::DB_FindXAssetHeader.get(), db_find_xasset_header_stub);
+			db_does_xasset_exist_hook.create(0x142EB6C90_g, db_does_xasset_exist_stub);
 			scr_gsc_obj_link_hook.create(0x142748F10_g, scr_gsc_obj_link_stub);
+			hksl_loadfile_hook.create(0x14375D6A0_g, hksl_loadfile_stub);
+			bg_cache_sync_hook.create(0x1405CE0B0_g, bg_cache_sync_stub);
 
 			// register load mods command
 			Cmd_AddCommand("reload_mods", load_mods_cmd);
-		}
-
-		void pre_start() override
-		{
-			storage.load_mods();
 		}
 	};
 }
