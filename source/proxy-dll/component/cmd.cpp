@@ -37,24 +37,22 @@ namespace cmd
             return false;
         }
 
-        void ConsoleInputThread()
+        void console_input_thread()
         {
-            HANDLE hConsoleInput = GetStdHandle(STD_INPUT_HANDLE);
-            DWORD charsRead;
-            CHAR inputBuffer[256];
+            HANDLE console_input_handle = GetStdHandle(STD_INPUT_HANDLE);
+            DWORD chars_read;
+            CHAR input_buffer[256];
 
             while (true)
             {
-                ReadConsole(hConsoleInput, inputBuffer, sizeof(inputBuffer), &charsRead, nullptr);
-                inputBuffer[charsRead - 2] = '\0';
+                if (ReadConsole(console_input_handle, input_buffer, sizeof(input_buffer), &chars_read, nullptr))
+                {
+                    input_buffer[chars_read - 2] = '\0';
 #ifdef DEBUG
-                logger::write(logger::LOG_TYPE_DEBUG, "[ INFO ]: User console input >>> %s", inputBuffer);
+                    logger::write(logger::LOG_TYPE_DEBUG, "[ INFO ]: User console input >>> %s", input_buffer);
 #endif
-                std::istringstream iss(inputBuffer);
-                std::string dvar;
-                iss >> dvar;
-
-                game::Cbuf_AddText(0, utilities::string::va("%s \n", inputBuffer));
+                    game::Cbuf_AddText(0, utilities::string::va("%s \n", input_buffer));
+                }
 
                 Sleep(100);
             }
@@ -62,7 +60,7 @@ namespace cmd
 
         void start_listen_thread()
         {
-            std::thread listen_thread(ConsoleInputThread);
+            std::thread listen_thread(console_input_thread);
             listen_thread.detach();
         }
     }
