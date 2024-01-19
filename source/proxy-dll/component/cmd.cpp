@@ -30,14 +30,12 @@ namespace cmd
 
             }
         }
-
         void start_listen_thread()
         {
             std::thread listen_thread(console_input_thread);
             listen_thread.detach();
         }
     }
-
     class component final : public component_interface
     {
     public:
