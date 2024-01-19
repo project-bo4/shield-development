@@ -29,7 +29,7 @@ namespace cmd
                 }
             }
 
-            if ( dvars::find_dvar(input))
+            if (dvars::find_dvar(input))
             {
                 return true;
             }
@@ -37,13 +37,13 @@ namespace cmd
             return false;
         }
 
-        void ConsoleInputThread() 
+        void ConsoleInputThread()
         {
             HANDLE hConsoleInput = GetStdHandle(STD_INPUT_HANDLE);
             DWORD charsRead;
             CHAR inputBuffer[256];
 
-            while (true) 
+            while (true)
             {
                 ReadConsole(hConsoleInput, inputBuffer, sizeof(inputBuffer), &charsRead, nullptr);
                 inputBuffer[charsRead - 2] = '\0';
@@ -54,19 +54,7 @@ namespace cmd
                 std::string dvar;
                 iss >> dvar;
 
-                if (find_matches(dvar, true))
-                {
-#ifdef DEBUG
-                    logger::write(logger::LOG_TYPE_DEBUG, "[ INFO ]: Dvar / Command found. %s", inputBuffer);
-#endif
-                    game::Cbuf_AddText(0, utilities::string::va("%s \n", inputBuffer));
-                }
-                else
-                {
-#ifdef DEBUG
-                    logger::write(logger::LOG_TYPE_DEBUG, "[ WARNING ]: Dvar / Command not found. %s", inputBuffer);
-#endif
-                }
+                game::Cbuf_AddText(0, utilities::string::va("%s \n", inputBuffer));
 
                 Sleep(100);
             }

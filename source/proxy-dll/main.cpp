@@ -200,24 +200,21 @@ namespace
 	}
 }
 
-FILE* originalStdout = nullptr;
-FILE* originalStderr = nullptr;
+FILE* empty;
 
 BOOL WINAPI DllMain(HINSTANCE, const DWORD reason, LPVOID)
 {
-
+	if (reason == DLL_PROCESS_ATTACH)
+	{
 #ifdef DEBUG
 		//Add console
 		AllocConsole();
 		AttachConsole(GetCurrentProcessId());
-		freopen_s(&originalStdout, "CONOUT$", "w", stdout); // Redirect stdout to the console
-		freopen_s(&originalStderr, "CONOUT$", "w", stderr); // Redirect stderr to the console
+		freopen_s(&empty, "CONOUT$", "r", stdin);
+		freopen_s(&empty, "CONOUT$", "w", stdout);
+		freopen_s(&empty, "CONOUT$", "w", stderr);
 		SetConsoleTitle("Project-Bo4");
 #endif
-
-	if (reason == DLL_PROCESS_ATTACH)
-	{
-		//console::init(); //start console
 		patch_entry_point();
 	}
 
@@ -232,14 +229,14 @@ HRESULT D3D11CreateDevice(void* adapter, const uint64_t driver_type,
 	void** immediate_context)
 {
 	static auto func = []
-	{
-		char dir[MAX_PATH]{ 0 };
-		GetSystemDirectoryA(dir, sizeof(dir));
+		{
+			char dir[MAX_PATH]{ 0 };
+			GetSystemDirectoryA(dir, sizeof(dir));
 
-		const auto d3d11 = utilities::nt::library::load(dir + "/d3d11.dll"s);
-		return d3d11.get_proc<decltype(&D3D11CreateDevice)>("D3D11CreateDevice");
-	}();
+			const auto d3d11 = utilities::nt::library::load(dir + "/d3d11.dll"s);
+			return d3d11.get_proc<decltype(&D3D11CreateDevice)>("D3D11CreateDevice");
+		}();
 
-	return func(adapter, driver_type, software, flags, p_feature_levels, feature_levels, sdk_version, device,
-		feature_level, immediate_context);
+		return func(adapter, driver_type, software, flags, p_feature_levels, feature_levels, sdk_version, device,
+			feature_level, immediate_context);
 }
