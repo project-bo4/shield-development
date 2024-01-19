@@ -26,8 +26,6 @@ namespace cmd
 
                     game::Cbuf_AddText(0, utilities::string::va("%s \n", input_buffer));
                 }
-
-
             }
         }
         void start_listen_thread()
