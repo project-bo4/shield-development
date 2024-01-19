@@ -21,9 +21,7 @@ namespace cmd
                 if (ReadConsole(console_input_handle, input_buffer, sizeof(input_buffer), &chars_read, nullptr))
                 {
                     input_buffer[chars_read - 2] = '\0';
-
                     logger::write(logger::LOG_TYPE_DEBUG, "[ INFO ]: User console input >>> %s", input_buffer);
-
                     game::Cbuf_AddText(0, utilities::string::va("%s \n", input_buffer));
                 }
             }
