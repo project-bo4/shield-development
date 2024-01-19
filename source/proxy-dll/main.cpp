@@ -201,7 +201,6 @@ namespace
 }
 
 FILE* empty;
-
 BOOL WINAPI DllMain(HINSTANCE, const DWORD reason, LPVOID)
 {
 	if (reason == DLL_PROCESS_ATTACH)
