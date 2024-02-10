@@ -226,6 +226,6 @@ HRESULT D3D11CreateDevice(void* adapter, const uint64_t driver_type,
 		return d3d11.get_proc<decltype(&D3D11CreateDevice)>("D3D11CreateDevice");
 	}();
 
-		return func(adapter, driver_type, software, flags, p_feature_levels, feature_levels, sdk_version, device,
-			feature_level, immediate_context);
+	return func(adapter, driver_type, software, flags, p_feature_levels, feature_levels, sdk_version, device,
+		feature_level, immediate_context);
 }
