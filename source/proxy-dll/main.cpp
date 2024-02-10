@@ -218,13 +218,13 @@ HRESULT D3D11CreateDevice(void* adapter, const uint64_t driver_type,
 	void** immediate_context)
 {
 	static auto func = []
-		{
-			char dir[MAX_PATH]{ 0 };
-			GetSystemDirectoryA(dir, sizeof(dir));
+	{
+		char dir[MAX_PATH]{ 0 };
+		GetSystemDirectoryA(dir, sizeof(dir));
 
-			const auto d3d11 = utilities::nt::library::load(dir + "/d3d11.dll"s);
-			return d3d11.get_proc<decltype(&D3D11CreateDevice)>("D3D11CreateDevice");
-		}();
+		const auto d3d11 = utilities::nt::library::load(dir + "/d3d11.dll"s);
+		return d3d11.get_proc<decltype(&D3D11CreateDevice)>("D3D11CreateDevice");
+	}();
 
 		return func(adapter, driver_type, software, flags, p_feature_levels, feature_levels, sdk_version, device,
 			feature_level, immediate_context);
