@@ -206,13 +206,6 @@ BOOL WINAPI DllMain(HINSTANCE, const DWORD reason, LPVOID)
 	if (reason == DLL_PROCESS_ATTACH)
 	{
 #ifdef DEBUG
-		//Add console
-		AllocConsole();
-		AttachConsole(GetCurrentProcessId());
-		freopen_s(&empty, "CONOUT$", "r", stdin);
-		freopen_s(&empty, "CONOUT$", "w", stdout);
-		freopen_s(&empty, "CONOUT$", "w", stderr);
-		SetConsoleTitle("Project-Bo4");
 #endif
 		patch_entry_point();
 	}
