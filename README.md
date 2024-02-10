@@ -12,7 +12,7 @@ As of May11, 2023 we merged 'demonware' branch into 'master'. it includes a buil
 ## INSTRUCTIONS
 
 > You should have publisher files required for playing online under LPC folder of your game directory.
-> if its not the case then start original game through battlenet launcher once to get those downloaded.
+> If its not the case then start original game through battlenet launcher once to get those downloaded.
 
 1- Clone repository with its sub-modules and use generate.bat to make visual studio solution then compile project and copy ``d3d11.dll`` into your bo4 folder.
 
@@ -22,7 +22,7 @@ As of May11, 2023 we merged 'demonware' branch into 'master'. it includes a buil
 
 ## SHIELD DOCUMENTATION
 
-Documentation on shield can be found [Here](https://shield-bo4.gitbook.io/).
+Documentation on shield can be found [here](https://shield-bo4.gitbook.io/).
 
 ## SUBMITTING ISSUES
 Github issues section is only for reporting programmatically errors of client. please dont use it for requesting features or seeking help with personal issues such as faulty game data or similar problems. use battlenet's scan and repair feature to fix those problems. 
