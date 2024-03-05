@@ -88,6 +88,7 @@ workspace "shield-development"
 		linkoptions { "/IGNORE:4702", "/LTCG" }
 		defines {"NDEBUG"}
 		flags {"FatalCompileWarnings"}
+		warnings "off"
 	filter {}
 
 	filter "configurations:Debug"
