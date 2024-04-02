@@ -470,20 +470,19 @@ namespace arxan
 
 			create_mutex_ex_a_hook.create(CreateMutexExA, create_mutex_ex_a_stub);
 
-			utilities::hook::copy(this->window_text_buffer_, GetWindowTextA, sizeof(this->window_text_buffer_));
-			utilities::hook::jump(GetWindowTextA, get_window_text_a_stub, true, true);
-			utilities::hook::move_hook(GetWindowTextA);
+			//utilities::hook::copy(this->window_text_buffer_, GetWindowTextA, sizeof(this->window_text_buffer_));
+			//utilities::hook::jump(GetWindowTextA, get_window_text_a_stub, true, true);
+			//utilities::hook::move_hook(GetWindowTextA);
 
 			const utilities::nt::library ntdll("ntdll.dll");
 
-			const auto nt_query_information_process = ntdll.get_proc<void*>("NtQueryInformationProcess");
-			nt_query_information_process_hook.create(nt_query_information_process,
-				nt_query_information_process_stub);
+			//const auto nt_query_information_process = ntdll.get_proc<void*>("NtQueryInformationProcess");
+			//nt_query_information_process_hook.create(nt_query_information_process,
+				//nt_query_information_process_stub);
 
 			const auto nt_query_system_information = ntdll.get_proc<void*>("NtQuerySystemInformation");
 			nt_query_system_information_hook.create(nt_query_system_information, nt_query_system_information_stub);
 			nt_query_system_information_hook.move();
-
 
 			/*************************************************************************************************************
 			** TODO : There is some kind of dormant defence mechanism. works so random makes it harder to investigate
