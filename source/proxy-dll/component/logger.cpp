@@ -37,6 +37,7 @@ namespace logger
 		OutputDebugStringA(text.c_str());
 #endif // OUTPUT_DEBUG_API
 
+		printf(text.c_str()); //print debug messages to new console
 		std::ofstream fs;
 		fs.open("project-bo4.log", std::ios_base::app);
 
