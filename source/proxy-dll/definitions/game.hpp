@@ -10,7 +10,7 @@ namespace game
 	//////////////////////////////////////////////////////////////////////////
 	//                              VARIABLES                               //
 	//////////////////////////////////////////////////////////////////////////
-	
+
 	extern std::string version_string;
 
 	typedef float vec_t;
@@ -20,18 +20,31 @@ namespace game
 
 	typedef uint32_t ScrVarIndex_t;
 	typedef uint64_t ScrVarNameIndex_t;
-	
+
+	constexpr int CMD_MAX_NESTING = 8;
+
 	//////////////////////////////////////////////////////////////////////////
 	//                               STRUCTS                                //
 	//////////////////////////////////////////////////////////////////////////
-	
+
+	enum ControllerIndex_t
+	{
+		INVALID_CONTROLLER_PORT = -1,
+		CONTROLLER_INDEX_FIRST = 0x0,
+		CONTROLLER_INDEX_0 = 0x0,
+		CONTROLLER_INDEX_1 = 0x1,
+		CONTROLLER_INDEX_2 = 0x2,
+		CONTROLLER_INDEX_3 = 0x3,
+		CONTROLLER_INDEX_COUNT = 0x4,
+	};
+
 	struct BO4_AssetRef_t
 	{
 		__int64 hash;
 		__int64 null;
 	};
-	
-	inline BO4_AssetRef_t 
+
+	inline BO4_AssetRef_t
 		AssetRef(uint64_t hashRef)
 	{
 		BO4_AssetRef_t m128i;
@@ -44,12 +57,13 @@ namespace game
 
 	struct cmd_function_t
 	{
-		cmd_function_t* next;
-		uint64_t name;
-		uint64_t pad0;
-		uint64_t pad1;
-		uint64_t pad2;
-		xcommand_t function;
+		cmd_function_t* next;     // 0
+		uint64_t name;            // 8
+		uint64_t autoCompleteDir; // 16
+		uint64_t autoCompleteExt; // 24
+		uint64_t pad2;            // 32
+		xcommand_t function;      // 40
+		// int autoComplete;         // 48
 	};
 
 	struct GSC_IMPORT_ITEM
@@ -126,7 +140,6 @@ namespace game
 		}
 	};
 
-
 	enum scriptInstance_t : int32_t
 	{
 		SCRIPTINSTANCE_SERVER = 0x0,
@@ -135,7 +148,6 @@ namespace game
 	};
 
 	typedef void (*BuiltinFunction)(scriptInstance_t);
-
 
 	struct BO4_BuiltinFunctionDef
 	{
@@ -152,7 +164,6 @@ namespace game
 		ScrVarIndex_t id;
 		bool persist;
 	};
-
 
 	enum ScrVarType_t : uint32_t {
 		TYPE_UNDEFINED = 0x0,
@@ -186,7 +197,6 @@ namespace game
 		TYPE_ENT_LIST = 0x1c,
 		TYPE_COUNT
 	};
-
 
 	struct BO4_scrVarPub {
 		const char* fieldBuffer;
@@ -281,7 +291,6 @@ namespace game
 
 	typedef void (*VM_OP_FUNC)(scriptInstance_t, function_stack_t*, ScrVmContext_t*, bool*);
 
-
 	struct BO4_scrVarGlob
 	{
 		ScrVarIndex_t* scriptNameSearchHashList;
@@ -329,6 +338,36 @@ namespace game
 		int slot;
 		int refCount;
 		uint32_t groupId;
+	};
+
+	struct CmdArgs
+	{
+		int nesting;
+		int localClientNum[8];
+		int controllerIndex[8];
+		int argshift[8];
+		int argc[8];
+		const char** argv[8];
+		char textPool[8192];
+		const char* argvPool[512];
+		int usedTextPool[8];
+		int totalUsedArgvPool;
+		int totalUsedTextPool;
+	};
+
+	struct va_info_t
+	{
+		char va_string[4][1024];
+		int index;
+	};
+
+	struct TLSData
+	{
+		va_info_t* vaInfo;
+		jmp_buf* errorJmpBuf;
+		void* traceInfo;
+		CmdArgs* cmdArgs;
+		void* errorData;
 	};
 
 	enum keyNum_t
@@ -712,19 +751,20 @@ namespace game
 		DvarValue current;
 		DvarValue latched;
 		DvarValue reset;
+		DvarValue unk48;
 	};
 
 	struct dvar_t
 	{
 		BO4_AssetRef_t name;
-		char padding_unk1[8];
+		dvar_t* hashnext;
 		DvarData* value;
 		dvarType_t type;
 		unsigned int flags;
 		DvarLimits domain;
 		char padding_unk2[8];
 	};
-	
+
 	enum eModes : int32_t
 	{
 		MODE_ZOMBIES = 0x0,
@@ -862,14 +902,14 @@ namespace game
 		hks_global* m_global;
 		hks_callstack m_callStack;
 		hks_api_stack m_apistack;
-
+		
 		// ...
 	};
 
 	//////////////////////////////////////////////////////////////////////////
 	//                               SYMBOLS                                //
 	//////////////////////////////////////////////////////////////////////////
-	
+
 	template <typename T>
 	class symbol
 	{
@@ -907,11 +947,16 @@ namespace game
 
 	// CMD
 	WEAK symbol<void(int localClientNum, const char* text)> Cbuf_AddText{ 0x143CDE880_g };
+	WEAK symbol<void(int localClientNum, ControllerIndex_t localControllerIndex, const char* text_in, int max_tokens,
+		bool evalExpressions, CmdArgs* args)> Cmd_TokenizeStringKernel{ 0x143CE0750_g };
+	WEAK symbol<void()> Cmd_EndTokenizedString{ 0x143CDF070_g };
+	WEAK symbol<void()> Cmd_EndTokenizedStringKernel{ 0x143CE09C0_g };
+	WEAK symbol<int()> Com_LocalClients_GetPrimary{ 0x142893AF0_g };
 
 	// Dvar
 	WEAK symbol<void* (const char* dvarName)> Dvar_FindVar{ 0x143CEBE40_g };
 	WEAK symbol<void* (void* dvarHash)> Dvar_FindVar_Hash{ 0x143CEBED0_g };
-
+	
 	// Live Functions
 	WEAK symbol<bool(uint64_t, int*)> Live_GetConnectivityInformation{ 0x1437FA460_g };
 
@@ -966,53 +1011,56 @@ namespace game
 	WEAK symbol<const char* (ScrVarIndex_t index)> ScrStr_ConvertToString{ 0x142759030_g };
 	WEAK symbol<ScrVarIndex_t(scriptInstance_t inst, ScrVarIndex_t parentId, ScrVarNameIndex_t index)> ScrVar_NewVariableByIndex{ 0x142760440_g };
 	WEAK symbol<void(scriptInstance_t inst, ScrVarIndex_t id, ScrVarValue_t* value)> ScrVar_SetValue{ 0x1427616B0_g };
-	
+
 	WEAK symbol<BuiltinFunction(uint32_t canonId, int* type, int* min_args, int* max_args)> CScr_GetFunction{ 0x141F13140_g };
 	WEAK symbol<BuiltinFunction(uint32_t canonId, int* type, int* min_args, int* max_args)> Scr_GetFunction{ 0x1433AF840_g };
 	WEAK symbol<void*(uint32_t canonId, int* type, int* min_args, int* max_args)> CScr_GetMethod{ 0x141F13650_g };
 	WEAK symbol<void*(uint32_t canonId, int* type, int* min_args, int* max_args)> Scr_GetMethod{ 0x1433AFC20_g };
-
+	
 	WEAK symbol<void(uint64_t code, scriptInstance_t inst, char* unused, bool terminal)> ScrVm_Error{ 0x142770330_g };
 	WEAK symbol<BO4_scrVarPub> scrVarPub{ 0x148307880_g };
 	WEAK symbol<BO4_scrVarGlob> scrVarGlob{ 0x148307830_g };
 	WEAK symbol<BO4_scrVmPub> scrVmPub{ 0x148307AA0_g };
-
+	
 	WEAK symbol<VM_OP_FUNC> gVmOpJumpTable{ 0x144EED340_g };
 	WEAK symbol<uint32_t> gObjFileInfoCount{ 0x1482F76B0_g };
 	WEAK symbol<objFileInfo_t[SCRIPTINSTANCE_MAX][650]> gObjFileInfo{ 0x1482EFCD0_g };
+
+	// Sys
+	WEAK symbol<TLSData*()> Sys_GetTLS{ 0x143C56140_g };
+
+	// SV/Cmd
+	WEAK symbol<cmd_function_t> cmd_functions{ 0x14F99B188_g };
+	WEAK symbol<CmdArgs> sv_cmd_args{ 0x14F998070_g };
+	WEAK symbol<void(BO4_AssetRef_t* cmdName, xcommand_t function, cmd_function_t* allocedCmd)> Cmd_AddCommandInternal{ 0x143CDEE80_g };
 
 	// lua functions
 	WEAK symbol<bool(lua_state* luaVM, const char* file)> Lua_CoD_LoadLuaFile{ 0x143962DF0_g };
 	WEAK symbol<void(int code, const char* error, lua_state* s)> Lua_CoD_LuaStateManager_Error{ 0x14398A860_g };
 	WEAK symbol<const char*(lua_state* luaVM, hks_object* obj, size_t* len)> hks_obj_tolstring{ 0x143755730_g };
 	WEAK symbol<float(lua_state* luaVM, const hks_object* obj)> hks_obj_tonumber{ 0x143755A90_g };
-
+	
 	// console labels
 	WEAK symbol<const char*> builtinLabels{ 0x144F11530_g };
+
 	// gsc types
 	WEAK symbol<const char*> var_typename{ 0x144EED240_g };
 
-	WEAK symbol<void(BO4_AssetRef_t* cmdName, xcommand_t function, cmd_function_t* allocedCmd)> Cmd_AddCommandInternal{0x143CDEE80_g};
-
 #define Cmd_AddCommand(name, function) \
-    static game::cmd_function_t __cmd_func_##function;  \
-    game::BO4_AssetRef_t __cmd_func_name_##function { (int64_t)fnv1a::generate_hash(name), 0 }; \
-    game::Cmd_AddCommandInternal(&__cmd_func_name_##function, function, &__cmd_func_##function)
+	static game::cmd_function_t __cmd_func_##function;  \
+	game::BO4_AssetRef_t __cmd_func_name_##function { (int64_t)fnv1a::generate_hash(name), 0 }; \
+	game::Cmd_AddCommandInternal(&__cmd_func_name_##function, function, &__cmd_func_##function)
 
 #define R_AddCmdDrawText(TXT, MC, F, X, Y, XS, YS, R, C, S) \
 	T8_AddBaseDrawTextCmd(TXT, MC, F, X, Y, XS, YS, R, C, S, -1, 0, 0)
 
 #define R_AddCmdDrawTextWithCursor(TXT, MC, F, X, Y, XS, YS, R, C, S, CP, CC) \
 	T8_AddBaseDrawTextCmd(TXT, MC, F, X, Y, XS, YS, R, C, S, CP, CC, 0)
-	
+
 #define Com_Error(code, fmt, ...) \
 		Com_Error_(__FILE__, __LINE__, code, fmt, ##__VA_ARGS__)
 
 	class scoped_critical_section_guard_lock
 	{
-
-
-
-
 	};
 }
