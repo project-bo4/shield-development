@@ -72,11 +72,6 @@ namespace logger
 			write(LOG_TYPE_INFO, " Project-BO4 Initializing ... %s[0x%llX]", utilities::nt::library{}.get_name().c_str(), utilities::nt::library{}.get_ptr());
 			write(LOG_TYPE_INFO, "=======================================================================================================");
 		}
-
-		void post_unpack() override
-		{
-			/* PLACE_HOLDER */
-		}
 	};
 }
 REGISTER_COMPONENT(logger::component)

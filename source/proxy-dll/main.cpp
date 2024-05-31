@@ -1,6 +1,7 @@
 #include <std_include.hpp>
-
+#include "definitions/game.hpp"
 #include "loader/component_loader.hpp"
+
 #include <utilities/io.hpp>
 #include <utilities/nt.hpp>
 #include <utilities/hook.hpp>
@@ -36,11 +37,15 @@ namespace
 
 	INT WINAPI get_system_metrics(int nIndex)
 	{
-#ifdef DEBUG
-		logger::write(logger::LOG_TYPE_DEBUG, "get_system_metrics(%i)", nIndex);
-#endif // DEBUG
+		static bool initialized = false;
 
-		component_loader::post_unpack();
+		if (!initialized) {
+			game::verify_game_version();
+
+			component_loader::post_unpack();
+
+			initialized = true;
+		}
 
 		return GetSystemMetrics(nIndex);
 	}

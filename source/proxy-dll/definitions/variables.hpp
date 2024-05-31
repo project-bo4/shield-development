@@ -21,9 +21,15 @@ namespace variables
 		uintptr_t pointer = 0;
 	};
 
-	extern std::vector<varEntry> dvars_record;
-	extern std::vector<varEntry> commands_record;
+	extern std::vector<varEntry> dvars_table;
+	extern std::vector<varEntry> commands_table;
 
 	std::vector<const char*> get_dvars_list();
 	std::vector<const char*> get_commands_list();
+}
+
+namespace runtime_errors
+{
+	constexpr uint64_t custom_error_id = 0x42693201;
+	const char* get_error_message(uint64_t code);
 }

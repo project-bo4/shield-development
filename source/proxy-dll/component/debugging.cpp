@@ -1,6 +1,5 @@
 #include <std_include.hpp>
 #include "definitions/game.hpp"
-#include "definitions/game_runtime_errors.hpp"
 #include "component/scheduler.hpp"
 #include "loader/component_loader.hpp"
 
@@ -74,7 +73,7 @@ namespace debugging
 
 	void sys_error_stub(uint32_t code, const char* message)
 	{
-		const char* error_message = game::runtime_errors::get_error_message(code);
+		const char* error_message = runtime_errors::get_error_message(code);
 
 		if (error_message)
 		{

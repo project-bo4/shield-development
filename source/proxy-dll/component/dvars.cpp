@@ -13,7 +13,7 @@ namespace dvars
 	{
 		void fetch_dvar_pointers()
 		{
-			for (auto& dvar : variables::dvars_record)
+			for (auto& dvar : variables::dvars_table)
 			{
 				dvar.pointer = spoofcall::invoke<uintptr_t>(game::Dvar_FindVar, dvar.name.data());
 			}
@@ -248,9 +248,9 @@ namespace dvars
 	{
 		if (hashRef == 0) return NULL;
 
-		auto it = std::find_if(variables::dvars_record.begin(), variables::dvars_record.end(), [&hashRef](variables::varEntry& i) { return i.fnv1a == hashRef; });
+		auto it = std::find_if(variables::dvars_table.begin(), variables::dvars_table.end(), [&hashRef](variables::varEntry& i) { return i.fnv1a == hashRef; });
 
-		if (it != variables::dvars_record.end() && it->pointer)
+		if (it != variables::dvars_table.end() && it->pointer)
 		{
 			return reinterpret_cast<game::dvar_t*>(it->pointer);
 		}
@@ -265,9 +265,9 @@ namespace dvars
 
 	game::dvar_t* find_dvar(const std::string& nameRef)
 	{
-		auto it = std::find_if(variables::dvars_record.begin(), variables::dvars_record.end(), [&nameRef](variables::varEntry& i) {  return utilities::string::compare(i.name, nameRef); });
+		auto it = std::find_if(variables::dvars_table.begin(), variables::dvars_table.end(), [&nameRef](variables::varEntry& i) {  return utilities::string::compare(i.name, nameRef); });
 
-		if (it != variables::dvars_record.end() && it->pointer)
+		if (it != variables::dvars_table.end() && it->pointer)
 		{
 			return reinterpret_cast<game::dvar_t*>(it->pointer);
 		}

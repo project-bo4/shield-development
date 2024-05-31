@@ -184,7 +184,7 @@ namespace game_console
 		{
 			double required_ratio = exact ? 1.00 : 0.01;
 
-			for (const auto& dvar : variables::dvars_record)
+			for (const auto& dvar : variables::dvars_table)
 			{
 				if (dvars::find_dvar(dvar.fnv1a) && utilities::string::match(input, dvar.name) >= required_ratio)
 				{
@@ -202,7 +202,7 @@ namespace game_console
 				suggestions.push_back({ input, "", fnv1a::generate_hash(input.data()), reinterpret_cast<uintptr_t>(dvars::find_dvar(input)) });
 			}
 
-			for (const auto& cmd : variables::commands_record)
+			for (const auto& cmd : variables::commands_table)
 			{
 				if (utilities::string::match(input, cmd.name) >= required_ratio)
 				{
@@ -374,7 +374,13 @@ namespace game_console
 					auto width = (con.screen_max[0] - con.screen_min[0]) - 12.0f;
 					auto height = ((con.screen_max[1] - con.screen_min[1]) - 32.0f) - 12.0f;
 
-					game::R_AddCmdDrawText(game::version_string.data(), 0x7FFFFFFF, R_DrawTextFont, x, ((height - 16.0f) + y) + con.font_height, con.font_scale, con.font_scale, 0.0f, con_outputVersionStringColor, 0);
+					char sysinfo_version[256];
+					bool result1 = utilities::hook::invoke<bool>(game::Live_SystemInfo, 0, 0, sysinfo_version, 256);
+					char sysinfo_livebits[256];
+					bool result2 = utilities::hook::invoke<bool>(game::Live_SystemInfo, 0, 1, sysinfo_livebits, 256);
+					const char* info = utilities::string::va("Project-BO4 1.0.0, Engine Version: %s, LiveBits: %s", sysinfo_version, sysinfo_livebits);
+
+					game::R_AddCmdDrawText(info, 0x7FFFFFFF, R_DrawTextFont, x, ((height - 16.0f) + y) + con.font_height, con.font_scale, con.font_scale, 0.0f, con_outputVersionStringColor, 0);
 
 					draw_output_scrollbar(x, y, width, height, output);
 					draw_output_text(x, y, output);

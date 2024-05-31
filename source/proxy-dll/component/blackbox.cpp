@@ -218,7 +218,7 @@ namespace blackbox
 
 		std::string generate_crash_info(const LPEXCEPTION_POINTERS exceptioninfo)
 		{
-			const auto& build_info = game::version_string;
+			std::string build_info = game::Com_GetVersionString();
 			const auto main_module = utilities::nt::library{};
 			const auto rip_address = exceptioninfo->ExceptionRecord->ExceptionAddress;
 

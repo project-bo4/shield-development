@@ -3,7 +3,6 @@
 #include "gsc_custom.hpp"
 #include "hashes.hpp"
 #include "definitions/game.hpp"
-#include "definitions/game_runtime_errors.hpp"
 #include "definitions/xassets.hpp"
 #include "loader/component_loader.hpp"
 #include "component/scheduler.hpp"
@@ -53,7 +52,7 @@ namespace gsc_funcs
 		vsprintf_s(buffer[inst], message, va);
 		va_end(va);
 
-		game::ScrVm_Error(game::runtime_errors::custom_error_id, inst, buffer[inst], terminal);
+		game::ScrVm_Error(runtime_errors::custom_error_id, inst, buffer[inst], terminal);
 	}
 
 	const char* lookup_hash(game::scriptInstance_t inst, const char* type, uint64_t hash)
@@ -1329,13 +1328,13 @@ namespace gsc_funcs
 			break;
 		default:
 			// put custom message for our id
-			if (code == game::runtime_errors::custom_error_id)
+			if (code == runtime_errors::custom_error_id)
 			{
 				game::scrVarPub[inst].error_message = unused;
 			}
 			else
 			{
-				game::scrVarPub[inst].error_message = game::runtime_errors::get_error_message(code);
+				game::scrVarPub[inst].error_message = runtime_errors::get_error_message(code);
 			}
 			break;
 		}
