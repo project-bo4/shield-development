@@ -16,8 +16,11 @@ namespace watermark
 
             if (!font /*|| *game::keyCatchers & 1*/) return;
 
-            auto x = 10.0f; 
-            auto y = 57.0f; // increase this value to move down - i choose to not overlap the console
+            auto screenWidth = game::ScrPlace_GetView(0)->realViewportSize[0];
+            auto textWidth = game::UI_TextWidth(0, text, 0x7FFFFFFF, font, scale);
+
+            auto x = screenWidth - (textWidth + 14.0f);
+            auto y = game::UI_TextHeight(font, scale) + 12.0f;
 
             float color[4] = { 0.666f, 0.666f, 0.666f, 0.666f };
 
