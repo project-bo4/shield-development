@@ -1242,6 +1242,7 @@ namespace gsc_funcs
 
 
 	bool enable_dev_func = false;
+	bool enable_dev_blocks = false;
 
 	utilities::hook::detour scr_get_function_reverse_lookup;
 	utilities::hook::detour cscr_get_function_reverse_lookup;
@@ -1461,7 +1462,7 @@ namespace gsc_funcs
 
 				game::GSC_OBJ* obj = info.activeVersion;
 
-				if (codepos >= obj->magic + obj->start_data && codepos < obj->magic + obj->start_data + obj->data_length)
+				if (codepos >= obj->magic + obj->cseg_offset && codepos < obj->magic + obj->cseg_offset + obj->cseg_size)
 				{
 					script_obj = obj;
 					break;
@@ -1528,15 +1529,20 @@ namespace gsc_funcs
 	class component final : public component_interface
 	{
 	public:
+		void pre_start() override
+		{
+			// enable dev functions
+			enable_dev_func = utilities::json_config::ReadBoolean("gsc", "dev_funcs", false);
+			// enable custom compiled dev blocks
+			enable_dev_blocks = utilities::json_config::ReadBoolean("gsc", "dev_blocks", false);
+		}
+
 		void post_unpack() override
 		{
 			// replace nulled function references
 			reinterpret_cast<game::BO4_BuiltinFunctionDef*>(0x144ED5D90_g)->actionFunc = add_debug_command; // csc
 			reinterpret_cast<game::BO4_BuiltinFunctionDef*>(0x1449BAD60_g)->actionFunc = add_debug_command; // gsc
-
-			// enable dev functions still available in the game
-			enable_dev_func = utilities::json_config::ReadBoolean("gsc", "dev_funcs", false);
-
+			
 			scr_get_function_reverse_lookup.create(0x1433AF8A0_g, scr_get_function_reverse_lookup_stub);
 			cscr_get_function_reverse_lookup.create(0x141F132A0_g, cscr_get_function_reverse_lookup_stub);
 			cscr_get_function.create(0x141F13140_g, cscr_get_function_stub);

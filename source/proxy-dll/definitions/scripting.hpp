@@ -38,7 +38,9 @@ namespace game
 		GIF_METHOD_CHILDTHREAD = 0x7,
 		GIF_CALLTYPE_MASK = 0xF,
 		GIF_DEV_CALL = 0x10,
-		GIF_GET_CALL = 0x20
+		GIF_GET_CALL = 0x20,
+
+		GIF_SHIELD_DEV_BLOCK_FUNC = 0x80,
 	};
 
 
@@ -62,7 +64,7 @@ namespace game
 		int32_t include_offset;
 		uint16_t string_count;
 		uint16_t exports_count;
-		int32_t start_data;
+		int32_t cseg_offset;
 		int32_t string_offset;
 		int16_t imports_count;
 		uint16_t fixup_count;
@@ -76,7 +78,7 @@ namespace game
 		int32_t script_size;
 		int32_t requires_implements_offset;
 		int32_t ukn50;
-		int32_t data_length;
+		int32_t cseg_size;
 		uint16_t include_count;
 		byte ukn5a;
 		byte requires_implements_count;

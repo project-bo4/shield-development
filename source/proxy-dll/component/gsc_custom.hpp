@@ -4,6 +4,8 @@
 namespace gsc_custom
 {
 	constexpr uint32_t linking_error = 1670707254;
+	constexpr uint16_t lazylink_opcode = 0x16;
+	constexpr uint16_t shield_devblock_opcode = 0x21;
 
 	enum gsic_field_type
 	{
@@ -24,6 +26,7 @@ namespace gsc_custom
 	struct gsic_info
 	{
 		bool sync{};
+		bool dev_blocks{};
 		std::vector<gsic_detour> detours{};
 	};
 

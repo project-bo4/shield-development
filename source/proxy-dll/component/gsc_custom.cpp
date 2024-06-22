@@ -211,6 +211,19 @@ namespace gsc_custom
 		inst_data.emplace_back(info);
 	}
 
+	void vm_op_custom_devblock(game::scriptInstance_t inst, game::function_stack_t* fs_0, game::ScrVmContext_t* vmc, bool* terminate)
+	{
+		byte* base = align_ptr<int16_t>(fs_0->pos);
+		int16_t delta = *(int16_t*)base;
+
+		fs_0->pos = base + 2;
+
+		if (!gsc_funcs::enable_dev_blocks) {
+			// default action, jump after the dev block
+			fs_0->pos = fs_0->pos + delta;
+		}
+	}
+
 	void vm_op_custom_lazylink(game::scriptInstance_t inst, game::function_stack_t* fs_0, game::ScrVmContext_t* vmc, bool* terminate)
 	{
 		byte* base = align_ptr<uint32_t>(fs_0->pos);
@@ -500,6 +513,7 @@ namespace gsc_custom
 
 
 	utilities::hook::detour scr_get_gsc_obj_hook;
+	utilities::hook::detour gsc_obj_resolve_hook;
 	void scr_get_gsc_obj_stub(game::scriptInstance_t inst, game::BO4_AssetRef_t* name, bool runScript)
 	{
 		if (game::gObjFileInfoCount[inst] == 0)
@@ -514,16 +528,59 @@ namespace gsc_custom
 		gsc_custom::link_detours(inst);
 	}
 
+	int32_t gsc_obj_resolve_stub(game::scriptInstance_t inst, game::GSC_OBJ* prime_obj)
+	{
+		game::GSC_IMPORT_ITEM* import_item = prime_obj->get_imports();
+
+		for (size_t i = 0; i < prime_obj->imports_count; i++)
+		{
+			if ((import_item->flags & game::GIF_SHIELD_DEV_BLOCK_FUNC) != 0)
+			{
+				// enable or disable this dev import
+				if (gsc_funcs::enable_dev_blocks)
+				{
+					import_item->flags &= ~game::GIF_DEV_CALL;
+				}
+				else
+				{
+					import_item->flags |= game::GIF_DEV_CALL;
+				}
+			}
+
+			// goto to the next element after the addresses
+			uint32_t* addresses = reinterpret_cast<uint32_t*>(import_item + 1);
+			import_item = reinterpret_cast<game::GSC_IMPORT_ITEM*>(addresses + import_item->num_address);
+		}
+
+		bool dv_func_back = gsc_funcs::enable_dev_func;
+
+		if (gsc_funcs::enable_dev_blocks)
+		{
+			gsc_funcs::enable_dev_func = true;
+		}
+
+		int32_t ret = gsc_obj_resolve_hook.invoke<int32_t>(inst, prime_obj);
+
+		gsc_funcs::enable_dev_func = dv_func_back;
+
+		return ret;
+	}
+
 	class component final : public component_interface
 	{
 	public:
 		void post_unpack() override
 		{
 			// t8compiler custom opcode
-			game::gVmOpJumpTable[0x16] = vm_op_custom_lazylink;
+			game::gVmOpJumpTable[lazylink_opcode] = vm_op_custom_lazylink;
+			game::gVmOpJumpTable[shield_devblock_opcode] = vm_op_custom_devblock;
 
 			// group gsc link
 			scr_get_gsc_obj_hook.create(0x142748BB0_g, scr_get_gsc_obj_stub);
+			if (gsc_funcs::enable_dev_blocks)
+			{
+				gsc_obj_resolve_hook.create(0x142746A30_g, gsc_obj_resolve_stub);
+			}
 
 			patch_linking_sys_error();
 		}
