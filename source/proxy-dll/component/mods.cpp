@@ -216,7 +216,10 @@ namespace mods {
 							for (size_t i = 0; i < prime_obj->imports_count; i++)
 							{
 								// mark this function for the custom linker
-								import_item->flags |= game::GIF_SHIELD_DEV_BLOCK_FUNC;
+								if ((import_item->flags & game::GIF_DEV_CALL) != 0)
+								{
+									import_item->flags |= game::GIF_SHIELD_DEV_BLOCK_FUNC;
+								}
 
 								// goto to the next element after the addresses
 								uint32_t* addresses = reinterpret_cast<uint32_t*>(import_item + 1);
