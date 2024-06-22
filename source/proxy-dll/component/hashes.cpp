@@ -5,6 +5,7 @@
 #include "definitions/variables.hpp"
 #include "loader/component_loader.hpp"
 #include <utilities/json_config.hpp>
+#include <utilities/string.hpp>
 
 namespace hashes
 {
@@ -60,8 +61,6 @@ namespace hashes
 
 	const char* lookup_tmp(const char* type, uint64_t hash)
 	{
-		static char tmp_buffer[0x50];
-
 		const char* val = lookup(hash);
 
 		if (val)
@@ -69,9 +68,7 @@ namespace hashes
 			return val;
 		}
 
-		sprintf_s(tmp_buffer, "%s_%llx", type, hash);
-
-		return tmp_buffer;
+		return utilities::string::va("%s_%llx", type, hash);
 	}
 
 	void add_hash(uint64_t hash, const char* value)

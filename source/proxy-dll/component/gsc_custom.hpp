@@ -3,6 +3,8 @@
 
 namespace gsc_custom
 {
+	constexpr uint32_t linking_error = 1670707254;
+
 	enum gsic_field_type
 	{
 		GSIC_FIELD_DETOUR = 0
@@ -26,4 +28,5 @@ namespace gsc_custom
 	};
 
 	void sync_gsic(game::scriptInstance_t inst, gsic_info& info);
+	void find_linking_issues();
 }
