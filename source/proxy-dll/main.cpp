@@ -7,6 +7,7 @@
 #include <utilities/hook.hpp>
 #include <utilities/string.hpp>
 #include <utilities/finally.hpp>
+#include <utilities/json_config.hpp>
 
 namespace
 {
@@ -50,6 +51,13 @@ namespace
 		return GetSystemMetrics(nIndex);
 	}
 
+	void load_logger()
+	{
+		std::string level_name = utilities::json_config::ReadString("common", "log_level", logger::get_level_name(logger::LOG_TYPE_INFO));
+
+		logger::set_log_level(logger::get_level_from_name(level_name.c_str()));
+	}
+
 	void patch_imports()
 	{
 		patch_import("user32.dll", "GetSystemMetrics", get_system_metrics);
@@ -83,6 +91,7 @@ namespace
 
 			try
 			{
+				load_logger();
 				patch_imports();
 				remove_crash_file();
 

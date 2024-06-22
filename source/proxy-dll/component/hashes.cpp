@@ -2,6 +2,7 @@
 #include "hashes.hpp"
 #include "gsc_funcs.hpp"
 
+#include "command.hpp"
 #include "definitions/variables.hpp"
 #include "loader/component_loader.hpp"
 #include <utilities/json_config.hpp>
@@ -219,6 +220,44 @@ namespace hashes
 		}
 	}
 
+	void register_hash_f()
+	{
+		game::CmdArgs* args = game::Sys_GetTLS()->cmdArgs;
+
+		if (args->argc[args->nesting] < 2)
+		{
+			logger::write(logger::LOG_TYPE_ERROR, "%s [string]+", args->argv[args->nesting][0]);
+			return;
+		}
+
+		for (size_t i = 1; i < args->argc[args->nesting]; i++)
+		{
+			const char* varname = args->argv[args->nesting][i];
+
+			hashes::add_hash(fnv1a::generate_hash(varname), varname);
+		}
+	}
+
+	void register_dvar_f()
+	{
+		game::CmdArgs* args = game::Sys_GetTLS()->cmdArgs;
+
+		if (args->argc[args->nesting] < 2)
+		{
+			logger::write(logger::LOG_TYPE_ERROR, "%s [dvar]+", args->argv[args->nesting][0]);
+			return;
+		}
+
+		for (size_t i = 1; i < args->argc[args->nesting]; i++)
+		{
+			const char* varname = args->argv[args->nesting][i];
+
+			uint64_t varhash = fnv1a::generate_hash(varname);
+
+			variables::dvars_table.emplace_back(variables::varEntry{ varname, "", varhash });
+			hashes::add_hash(varhash, varname);
+		}
+	}
 
 	class component final : public component_interface
 	{
@@ -246,6 +285,12 @@ namespace hashes
 			{
 				load_file(default_file_name_common, HFF_COMMON);
 			}
+		}
+
+		void post_unpack() override
+		{
+			command::add("register_hash", register_hash_f, "Register hash string, Usage: register_hash <hash>");
+			command::add("register_dvar", register_dvar_f, "Register dvar, Usage: register_dvar <name>");
 		}
 	};
 }

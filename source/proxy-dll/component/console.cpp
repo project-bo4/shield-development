@@ -5,6 +5,7 @@
 #include "console.hpp"
 #include <utilities/thread.hpp>
 #include <utilities/hook.hpp>
+#include <utilities/json_config.hpp>
 
 #define OUTPUT_HANDLE GetStdHandle(STD_OUTPUT_HANDLE)
 
@@ -12,6 +13,7 @@ namespace console
 {
 	namespace
 	{
+		bool enabled{};
 		const char* branding_str = "shield> ";
 		size_t branding_length = std::strlen(branding_str);
 
@@ -315,6 +317,12 @@ namespace console
 
 		void pre_start() override
 		{
+			enabled = utilities::json_config::ReadBoolean("common", "console", true);
+			if (!enabled)
+			{
+				return;
+			}
+
 			FILE* empty;
 			AllocConsole();
 			AttachConsole(GetCurrentProcessId());
@@ -375,6 +383,10 @@ namespace console
 
 		void pre_destroy() override
 		{
+			if (!enabled)
+			{
+				return;
+			}
 			con.kill = true;
 			SetEvent(con.kill_event);
 
