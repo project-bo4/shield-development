@@ -254,6 +254,13 @@ namespace hashes
 
 			uint64_t varhash = fnv1a::generate_hash(varname);
 
+			if (std::find_if(variables::dvars_table.begin(), variables::dvars_table.end(),
+				[varhash](const variables::varEntry& v) { return v.fnv1a == varhash; })
+				!= variables::dvars_table.end())
+			{
+				continue; // already defined
+			}
+
 			variables::dvars_table.emplace_back(variables::varEntry{ varname, "", varhash });
 			hashes::add_hash(varhash, varname);
 		}
@@ -289,8 +296,8 @@ namespace hashes
 
 		void post_unpack() override
 		{
-			command::add("register_hash", register_hash_f, "Register hash string, Usage: register_hash <hash>");
-			command::add("register_dvar", register_dvar_f, "Register dvar, Usage: register_dvar <name>");
+			command::add("wswsujhnqzdiqzdzfqzgvqzfhash", register_hash_f, "Register hash string, Usage: wswsujhnqzdiqzdzfqzgvqzfhash <hash>+");
+			command::add("wswsujhnqzdiqzdzfqzgvqzfdvar", register_dvar_f, "Register dvar, Usage: wswsujhnqzdiqzdzfqzgvqzfdvar <name>+");
 		}
 	};
 }
