@@ -382,6 +382,12 @@ namespace game
 		SCOPED_CRITSECT_TRY = 0x3,
 	};
 
+	enum critical_section : int32_t
+	{
+		CRITSECT_GSC_OBJECTS = 54,
+		CRITSECT_LUA = 62
+	};
+
 	class scoped_critical_section
 	{
 		int32_t _s;
@@ -389,7 +395,7 @@ namespace game
 		bool _isScopedRelease;
 		scoped_critical_section* _next;
 	public:
-		scoped_critical_section(int32_t s, scoped_critical_section_type type);
+		scoped_critical_section(critical_section s, scoped_critical_section_type type);
 		~scoped_critical_section();
 	};
 
@@ -407,6 +413,8 @@ namespace game
 		const void* m_hook_return_addr; // const hksInstruction*
 		int32_t m_hook_level;
 	};
+	struct hks_upvalue {};
+	typedef void* hks_errorhandler;
 	struct lua_state;
 	struct hks_object
 	{
@@ -437,7 +445,12 @@ namespace game
 		hks_global* m_global;
 		hks_callstack m_callStack;
 		hks_api_stack m_apistack;
-
+		hks_upvalue* pending;
+		hks_object globals;
+		hks_object m_cEnv;
+		hks_errorhandler m_callsites;
+		int32_t m_numberOfCCalls;
+		byte* m_context;
 		// ...
 	};
 
@@ -481,7 +494,7 @@ namespace game
 	WEAK symbol<TLSData* ()> Sys_GetTLS{ 0x143C56140_g };
 
 	// Mutex
-	WEAK symbol<void(scoped_critical_section* sec, int32_t s, scoped_critical_section_type type)> ScopedCriticalSectionConstructor{ 0x14289E3C0_g };
+	WEAK symbol<void(scoped_critical_section* sec, critical_section s, scoped_critical_section_type type)> ScopedCriticalSectionConstructor{ 0x14289E3C0_g };
 	WEAK symbol<void(scoped_critical_section* sec)> ScopedCriticalSectionDestructor{ 0x14289E440_g };
 
 	// Dvar
@@ -491,6 +504,7 @@ namespace game
 	// Cmd
 	WEAK symbol<void(int localClientNum, const char* text)> Cbuf_AddText{ 0x143CDE880_g };
 	WEAK symbol<void(int localClientNum, int controllerIndex, const char* buffer)> Cbuf_ExecuteBuffer{ 0x143CDEBE0_g };
+	WEAK symbol<int()> Com_LocalClients_GetPrimary{ 0x142893AF0_g };
 
 	WEAK symbol<void(BO4_AssetRef_t* cmdName, xcommand_t function, cmd_function_t* allocedCmd)> Cmd_AddCommandInternal{ 0x143CDEE80_g };
 	WEAK symbol<void()> Cbuf_AddServerText_f{ 0x143CDE870_g };
@@ -569,6 +583,7 @@ namespace game
 	WEAK symbol<BuiltinFunction(uint32_t canonId, int* type, int* min_args, int* max_args)> Scr_GetFunction{ 0x1433AF840_g };
 	WEAK symbol<void*(uint32_t canonId, int* type, int* min_args, int* max_args)> CScr_GetMethod{ 0x141F13650_g };
 	WEAK symbol<void*(uint32_t canonId, int* type, int* min_args, int* max_args)> Scr_GetMethod{ 0x1433AFC20_g };
+	WEAK symbol<void(game::scriptInstance_t inst, byte* codepos, const char** scriptname, int32_t* sloc, int32_t* crc, int32_t* vm)> Scr_GetGscExportInfo{ 0x142748550_g };
 
 	WEAK symbol<void(uint64_t code, scriptInstance_t inst, char* unused, bool terminal)> ScrVm_Error{ 0x142770330_g };
 	WEAK symbol<BO4_scrVarPub> scrVarPub{ 0x148307880_g };
@@ -584,6 +599,7 @@ namespace game
 	WEAK symbol<void(int code, const char* error, lua_state* s)> Lua_CoD_LuaStateManager_Error{ 0x14398A860_g };
 	WEAK symbol<const char*(lua_state* luaVM, hks_object* obj, size_t* len)> hks_obj_tolstring{ 0x143755730_g };
 	WEAK symbol<float(lua_state* luaVM, const hks_object* obj)> hks_obj_tonumber{ 0x143755A90_g };
+	WEAK symbol<const char*> hks_typename{ 0x1455B2360_g };
 
 
 #define R_AddCmdDrawText(TXT, MC, F, X, Y, XS, YS, R, C, S) \

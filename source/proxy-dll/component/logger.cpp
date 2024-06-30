@@ -10,6 +10,17 @@
 
 namespace logger
 {
+	namespace
+	{
+		type current_level
+		{
+#ifndef _DEBUG
+		LOG_TYPE_INFO
+#else
+		LOG_TYPE_DEBUG
+#endif // _DEBUG
+		};
+	}
 	const char* LogTypeNames[] =
 	{
 		"DEBUG",
@@ -18,11 +29,31 @@ namespace logger
 		"ERROR"
 	};
 
+	void set_log_level(type level)
+	{
+		current_level = level;
+	}
+
+	type get_level_from_name(const char* name)
+	{
+		for (size_t i = 0; i < ARRAYSIZE(LogTypeNames); i++)
+		{
+			if (!_strcmpi(LogTypeNames[i], name))
+			{
+				return (type)i;
+			}
+		}
+		return LOG_TYPE_INFO;
+	}
+
+	const char* get_level_name(type level)
+	{
+		return LogTypeNames[level];
+	}
+
 	void write(const int type, std::string str)
 	{
-#ifndef _DEBUG
-		if (type == LOG_TYPE_DEBUG) return;
-#endif // _DEBUG
+		if (type < current_level) return;
 
 		std::stringstream ss;
 		ss << "[ " << LogTypeNames[type] << " ] " << str << std::endl;

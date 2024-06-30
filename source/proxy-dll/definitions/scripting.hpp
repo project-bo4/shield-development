@@ -14,6 +14,36 @@ namespace game
 		uint8_t flags;
 	};
 
+	enum GSC_EXPORT_FLAGS : byte
+	{
+		GEF_LINKED = 0x01,
+		GEF_AUTOEXEC = 0x02,
+		GEF_PRIVATE = 0x04,
+		GEF_CLASS_MEMBER = 0x08,
+		GEF_CLASS_DESTRUCTOR = 0x10,
+		GEF_VE = 0x20,
+		GEF_EVENT = 0x40,
+		GEF_CLASS_LINKED = 0x80,
+		GEF_CLASS_VTABLE = 0x86
+	};
+
+	enum GSC_IMPORT_FLAGS : byte
+	{
+		GIF_FUNC_METHOD = 0x1,
+		GIF_FUNCTION = 0x2,
+		GIF_FUNCTION_THREAD = 0x3,
+		GIF_FUNCTION_CHILDTHREAD = 0x4,
+		GIF_METHOD = 0x5,
+		GIF_METHOD_THREAD = 0x6,
+		GIF_METHOD_CHILDTHREAD = 0x7,
+		GIF_CALLTYPE_MASK = 0xF,
+		GIF_DEV_CALL = 0x10,
+		GIF_GET_CALL = 0x20,
+
+		GIF_SHIELD_DEV_BLOCK_FUNC = 0x80,
+	};
+
+
 	struct GSC_EXPORT_ITEM
 	{
 		uint32_t checksum;
@@ -34,7 +64,7 @@ namespace game
 		int32_t include_offset;
 		uint16_t string_count;
 		uint16_t exports_count;
-		int32_t start_data;
+		int32_t cseg_offset;
 		int32_t string_offset;
 		int16_t imports_count;
 		uint16_t fixup_count;
@@ -48,7 +78,7 @@ namespace game
 		int32_t script_size;
 		int32_t requires_implements_offset;
 		int32_t ukn50;
-		int32_t data_length;
+		int32_t cseg_size;
 		uint16_t include_count;
 		byte ukn5a;
 		byte requires_implements_count;

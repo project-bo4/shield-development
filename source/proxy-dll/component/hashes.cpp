@@ -2,9 +2,11 @@
 #include "hashes.hpp"
 #include "gsc_funcs.hpp"
 
+#include "command.hpp"
 #include "definitions/variables.hpp"
 #include "loader/component_loader.hpp"
 #include <utilities/json_config.hpp>
+#include <utilities/string.hpp>
 
 namespace hashes
 {
@@ -60,8 +62,6 @@ namespace hashes
 
 	const char* lookup_tmp(const char* type, uint64_t hash)
 	{
-		static char tmp_buffer[0x50];
-
 		const char* val = lookup(hash);
 
 		if (val)
@@ -69,9 +69,7 @@ namespace hashes
 			return val;
 		}
 
-		sprintf_s(tmp_buffer, "%s_%llx", type, hash);
-
-		return tmp_buffer;
+		return utilities::string::va("%s_%llx", type, hash);
 	}
 
 	void add_hash(uint64_t hash, const char* value)
@@ -222,6 +220,48 @@ namespace hashes
 		}
 	}
 
+	void dev_add_lookup_f(const command::params& params)
+	{
+		if (params.size() < 2)
+		{
+			logger::write(logger::LOG_TYPE_ERROR, "%s [string]+", params[0]);
+			return;
+		}
+
+		for (size_t i = 1; i < params.size(); i++)
+		{
+			const char* varname = params[i];
+
+			hashes::add_hash(fnv1a::generate_hash(varname), varname);
+		}
+	}
+
+	void dev_add_dvar_name_f(const command::params& params)
+	{
+
+		if (params.size() < 2)
+		{
+			logger::write(logger::LOG_TYPE_ERROR, "%s [dvar]+", params[0]);
+			return;
+		}
+
+		for (size_t i = 1; i < params.size(); i++)
+		{
+			const char* varname = params[i];
+
+			uint64_t varhash = fnv1a::generate_hash(varname);
+
+			if (std::find_if(variables::dvars_table.begin(), variables::dvars_table.end(),
+				[varhash](const variables::varEntry& v) { return v.fnv1a == varhash; })
+				!= variables::dvars_table.end())
+			{
+				continue; // already defined
+			}
+
+			variables::dvars_table.emplace_back(variables::varEntry{ varname, "", varhash });
+			hashes::add_hash(varhash, varname);
+		}
+	}
 
 	class component final : public component_interface
 	{
@@ -249,6 +289,12 @@ namespace hashes
 			{
 				load_file(default_file_name_common, HFF_COMMON);
 			}
+		}
+
+		void post_unpack() override
+		{
+			command::add("dev_AddLookup", dev_add_lookup_f, "Register hash string, Usage: dev_AddLookup <hash>+");
+			command::add("dev_AddDVarName", dev_add_dvar_name_f, "Register dvar, Usage: dev_AddDVarName <name>+");
 		}
 	};
 }

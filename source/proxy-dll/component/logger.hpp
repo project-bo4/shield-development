@@ -10,6 +10,9 @@ namespace logger
 		LOG_TYPE_ERROR = 3
 	};
 
+	void set_log_level(type level);
+	type get_level_from_name(const char* name);
+	const char* get_level_name(type level);
 	void write(const int type, std::string str);
 	void write(const int type, const char* fmt, ...);
 }
