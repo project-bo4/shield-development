@@ -220,37 +220,34 @@ namespace hashes
 		}
 	}
 
-	void register_hash_f()
+	void dev_add_lookup_f(const command::params& params)
 	{
-		game::CmdArgs* args = game::Sys_GetTLS()->cmdArgs;
-
-		if (args->argc[args->nesting] < 2)
+		if (params.size() < 2)
 		{
-			logger::write(logger::LOG_TYPE_ERROR, "%s [string]+", args->argv[args->nesting][0]);
+			logger::write(logger::LOG_TYPE_ERROR, "%s [string]+", params[0]);
 			return;
 		}
 
-		for (size_t i = 1; i < args->argc[args->nesting]; i++)
+		for (size_t i = 1; i < params.size(); i++)
 		{
-			const char* varname = args->argv[args->nesting][i];
+			const char* varname = params[i];
 
 			hashes::add_hash(fnv1a::generate_hash(varname), varname);
 		}
 	}
 
-	void register_dvar_f()
+	void dev_add_dvar_name_f(const command::params& params)
 	{
-		game::CmdArgs* args = game::Sys_GetTLS()->cmdArgs;
 
-		if (args->argc[args->nesting] < 2)
+		if (params.size() < 2)
 		{
-			logger::write(logger::LOG_TYPE_ERROR, "%s [dvar]+", args->argv[args->nesting][0]);
+			logger::write(logger::LOG_TYPE_ERROR, "%s [dvar]+", params[0]);
 			return;
 		}
 
-		for (size_t i = 1; i < args->argc[args->nesting]; i++)
+		for (size_t i = 1; i < params.size(); i++)
 		{
-			const char* varname = args->argv[args->nesting][i];
+			const char* varname = params[i];
 
 			uint64_t varhash = fnv1a::generate_hash(varname);
 
@@ -296,8 +293,8 @@ namespace hashes
 
 		void post_unpack() override
 		{
-			command::add("wswsujhnqzdiqzdzfqzgvqzfhash", register_hash_f, "Register hash string, Usage: wswsujhnqzdiqzdzfqzgvqzfhash <hash>+");
-			command::add("wswsujhnqzdiqzdzfqzgvqzfdvar", register_dvar_f, "Register dvar, Usage: wswsujhnqzdiqzdzfqzgvqzfdvar <name>+");
+			command::add("dev_AddLookup", dev_add_lookup_f, "Register hash string, Usage: dev_AddLookup <hash>+");
+			command::add("dev_AddDVarName", dev_add_dvar_name_f, "Register dvar, Usage: dev_AddDVarName <name>+");
 		}
 	};
 }
