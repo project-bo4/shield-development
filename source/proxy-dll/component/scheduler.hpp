@@ -16,6 +16,9 @@ namespace scheduler
 		// The game's main thread
 		main,
 
+		// The game's server spawn call
+		spawn_server,
+
 		count,
 	};
 

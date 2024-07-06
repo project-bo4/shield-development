@@ -88,7 +88,8 @@ namespace scheduler
 		utilities::hook::detour r_end_frame_hook;
 		utilities::hook::detour g_run_frame_hook;
 		utilities::hook::detour main_frame_hook;
-
+		utilities::hook::detour sv_spawnserver_hook;
+		
 		void execute(const pipeline type)
 		{
 			assert(type >= 0 && type < pipeline::count);
@@ -111,6 +112,12 @@ namespace scheduler
 		{
 			main_frame_hook.invoke<void>();
 			execute(pipeline::main);
+		}
+
+		void sv_spawnserver_stub()
+		{
+			sv_spawnserver_hook.invoke<void>();
+			execute(pipeline::spawn_server);
 		}
 	}
 
@@ -167,6 +174,8 @@ namespace scheduler
 			r_end_frame_hook.create(0x14361E260_g, r_end_frame_stub);	// R_EndFrame
 			main_frame_hook.create(0x14288BAE0_g, main_frame_stub);		// Com_Frame
 			//g_run_frame_hook.create(0x142D08FC0_g, server_frame_stub);	// G_RunFrame
+			sv_spawnserver_hook.create(0x143C5E900_g, sv_spawnserver_stub);		// SV_SpawnServer unk call
+			
 		}
 
 		void pre_destroy() override

@@ -4,8 +4,10 @@
 #include "definitions/variables.hpp"
 #include "loader/component_loader.hpp"
 
+#include "component/command.hpp"
 #include "component/dvars.hpp"
 #include "component/scheduler.hpp"
+#include "component/mods.hpp"
 
 #include <utilities/hook.hpp>
 #include <utilities/string.hpp>
@@ -31,6 +33,9 @@ namespace game_console
 		game::vec4_t con_inputAltDescriptionColor = { 0.9f, 0.6f, 0.2f, 1.0f };
 		game::vec4_t con_inputExtraInfoColor = { 1.0f, 0.5f, 0.5f, 1.0f };
 		game::vec4_t con_outputVersionStringColor = { 0.92f, 1.0f, 0.65f, 1.0f };
+		game::vec4_t con_devguiColor = { 0.1f, 0.1f, 0.1f, 1.0f };
+		game::vec4_t con_devguiTextColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+		game::vec4_t con_devguiSelectedColor = { 0.60f, 0.28f, 0.15f, 1.0f };
 
 		using suggestion_t = variables::varEntry;
 		using output_queue = std::deque<std::string>;
@@ -56,13 +61,93 @@ namespace game_console
 			utilities::concurrency::container<output_queue, std::recursive_mutex> output{};
 		};
 
+		struct ingame_devgui_component
+		{
+			std::string title;
+			std::string action{};
+			std::vector<ingame_devgui_component> gui{};
+
+			ingame_devgui_component& find_or_create(const std::string& title);
+
+			float get_title_width() const;
+
+			float get_width_sum(float padding) const;
+
+			float get_width_max() const;
+
+			float has_sub_menu_buttons() const;
+		};
+
+		struct ingame_devgui
+		{
+			bool open{};
+			ingame_devgui_component comp{ "devgui" };
+			std::vector<size_t> cursors{ 0 };
+		};
+
 		ingame_console con{};
+		ingame_devgui devgui{};
 
 		std::int32_t history_index = -1;
 		std::deque<std::string> history{};
 
 		std::string fixed_input{};
 		std::vector<suggestion_t> matches{};
+
+
+		ingame_devgui_component& ingame_devgui_component::find_or_create(const std::string& title)
+		{
+			for (ingame_devgui_component& cmp : gui)
+			{
+				if (cmp.title == title)
+				{
+					return cmp;
+				}
+			}
+			gui.emplace_back(title);
+			return gui[gui.size() - 1];
+		}
+
+		float ingame_devgui_component::get_title_width() const
+		{
+			return game::UI_TextWidth(0, title.data(), 0x7FFFFFFF, R_DrawTextFont, con.font_scale);
+		}
+
+		float ingame_devgui_component::get_width_sum(float padding) const
+		{
+			float l{};
+			for (const ingame_devgui_component& g : gui)
+			{
+				l += g.get_title_width() + padding * 2;
+			}
+			return l;
+		}
+
+		float ingame_devgui_component::get_width_max() const
+		{
+			float l{};
+			for (const ingame_devgui_component& g : gui)
+			{
+				float w = g.get_title_width();
+				if (w > l)
+				{
+					l = w;
+				}
+			}
+			return l;
+		}
+
+		float ingame_devgui_component::has_sub_menu_buttons() const
+		{
+			for (const ingame_devgui_component& g : gui)
+			{
+				if (g.gui.size())
+				{
+					return true;
+				}
+			}
+			return false;
+		}
 
 		void clear_input()
 		{
@@ -102,17 +187,36 @@ namespace game_console
 				});
 		}
 
-		void toggle_console()
+
+		void exit_devgui()
+		{
+			devgui.open = false;
+		}
+
+		void exit_console()
 		{
 			clear_input();
 
 			con.output_visible = false;
+		}
+
+		void toggle_devgui()
+		{
+			exit_console();
+			*game::keyCatchers &= ~1;
+			devgui.open = !devgui.open;
+		}
+
+		void toggle_console()
+		{
+			exit_console();
+			devgui.open = false;
 			*game::keyCatchers ^= 1;
 		}
 
 		void toggle_console_output()
 		{
-			con.output_visible = con.output_visible == 0;
+			con.output_visible = !con.output_visible;
 		}
 
 		bool is_renderer_ready()
@@ -387,6 +491,208 @@ namespace game_console
 				});
 		}
 
+		constexpr float devgui_padding = 6.0f;
+		constexpr const char* devgui_selectmenu = ">";
+
+		void draw_vertical_devgui(float x, float y, size_t depth, const ingame_devgui_component& parent)
+		{
+			if (depth >= devgui.cursors.size())
+			{
+				return; // not selected
+			}
+			size_t cursor = devgui.cursors[depth];
+			if (cursor >= parent.gui.size())
+			{
+				// bad cursor, set to default element
+				if (parent.gui.empty())
+				{
+					return;
+				}
+				cursor = devgui.cursors[depth] = 0;
+			}
+
+			// draw the sub lines
+			float boxw = parent.get_width_max() + devgui_padding * 2;
+			bool subbutton = parent.has_sub_menu_buttons();
+			float subbutton_start{};
+			if (subbutton)
+			{
+				subbutton_start = boxw;
+				boxw += devgui_padding + game::UI_TextWidth(0, devgui_selectmenu, 0x7FFFFFFF, R_DrawTextFont, con.font_scale);
+			}
+
+			for (size_t i = 0; i < parent.gui.size(); i++)
+			{
+				float* background;
+				if (i == cursor)
+				{
+					// selected
+					background = con_devguiSelectedColor;
+				}
+				else
+				{
+					background = con_devguiColor;
+				}
+				const ingame_devgui_component& comp = parent.gui[i];
+
+				draw_box(x, y, boxw, con.font_height + devgui_padding * 2, background);
+				game::R_AddCmdDrawText(comp.title.data(), 0x7FFFFFFF, R_DrawTextFont, x + devgui_padding, y + devgui_padding + con.font_height, con.font_scale, con.font_scale, 0.0f, con_devguiTextColor, 0);
+
+				if (comp.gui.size())
+				{
+					// draw select option
+					game::R_AddCmdDrawText(devgui_selectmenu, 0x7FFFFFFF, R_DrawTextFont, x + subbutton_start, y + devgui_padding + con.font_height, con.font_scale, con.font_scale, 0.0f, con_devguiTextColor, 0);
+
+					if (i == cursor)
+					{
+						draw_vertical_devgui(x + boxw, y, depth + 1, comp);
+					}
+				}
+
+				y += con.font_height + devgui_padding * 2;
+			}
+		}
+
+		void draw_devgui()
+		{
+			if (!devgui.open || devgui.comp.gui.empty())
+			{
+				return; // nothing to draw
+			}
+
+			if (devgui.cursors.empty())
+			{
+				devgui.cursors.push_back(0);
+			}
+
+			float bar_width = devgui.comp.get_width_sum(devgui_padding);
+
+			float x = (con.screen_max[0] - con.screen_min[0] - bar_width) / 2;
+			float y = con.screen_min[1];
+
+			// draw main line
+			size_t cursor = devgui.cursors[0];
+			for (size_t i = 0; i < devgui.comp.gui.size(); i++)
+			{
+				float* background;
+				if (i == cursor)
+				{
+					// selected
+					background = con_devguiSelectedColor;
+				}
+				else
+				{
+					background = con_devguiColor;
+				}
+
+				const ingame_devgui_component& comp = devgui.comp.gui[i];
+
+				float cw = comp.get_title_width() + devgui_padding * 2;
+
+				draw_box(x, y, cw, con.font_height + devgui_padding * 2, background);
+				game::R_AddCmdDrawText(comp.title.data(), 0x7FFFFFFF, R_DrawTextFont, x + devgui_padding, y + devgui_padding + con.font_height, con.font_scale, con.font_scale, 0.0f, con_devguiTextColor, 0);
+
+				if (i == cursor)
+				{
+					draw_vertical_devgui(x, y + con.font_height + devgui_padding * 2 + devgui_padding, 1, comp);
+				}
+
+				x += cw;
+			}
+		}
+
+		ingame_devgui_component* get_current_devgui(bool parent)
+		{
+			if (!devgui.open || devgui.cursors.empty())
+			{
+				return nullptr;
+			}
+			if (devgui.cursors.size() == 1 && parent)
+			{
+				return &devgui.comp;
+			}
+			if (devgui.cursors[0] >= devgui.comp.gui.size())
+			{
+				devgui.cursors.clear();
+				return nullptr;
+			}
+			ingame_devgui_component* component = &devgui.comp.gui[devgui.cursors[0]];
+
+			size_t end = parent ? devgui.cursors.size() - 1 : devgui.cursors.size();
+
+			for (size_t cursor_idx = 1; cursor_idx < end; cursor_idx++)
+			{
+				size_t cursor = devgui.cursors[cursor_idx];
+				if (cursor >= component->gui.size())
+				{
+					devgui.cursors.clear(); // invalid cursor
+					devgui.cursors.push_back(0);
+					exit_devgui();
+					return nullptr;
+				}
+
+				component = &component->gui[cursor];
+			}
+			return component;
+		}
+
+		void enter_devgui()
+		{
+			devgui.open = true;
+			if (devgui.cursors.empty())
+			{
+				if (devgui.comp.gui.empty())
+				{
+					return; // no menus
+				}
+				devgui.cursors.push_back(0);
+				return;
+			}
+
+			ingame_devgui_component* component = get_current_devgui(false);
+
+			if (!component)
+			{
+				return;
+			}
+
+			if (component->gui.empty())
+			{
+				// terminal entry, we execute it
+				game::Cbuf_AddText(0, utilities::string::va("%s \n", component->action.data()));
+				return;
+			}
+
+			// menu entry, we enter it
+			devgui.cursors.push_back(0);
+		}
+
+		void return_devgui()
+		{
+			if (devgui.cursors.size() > 1)
+			{
+				devgui.cursors.pop_back();
+			}
+			else
+			{
+				exit_devgui();
+			}
+		}
+
+		void move_devgui(int delta)
+		{
+			ingame_devgui_component* component = get_current_devgui(true);
+			if (!component || devgui.cursors.empty() || component->gui.empty())
+			{
+				return;
+			}
+
+			size_t& cursor = devgui.cursors[devgui.cursors.size() - 1];
+			int max = (int)component->gui.size();
+
+			cursor = (size_t)(((int)cursor + (delta % max) + max) % max);
+		}
+
 		void draw_console()
 		{
 			if (!is_renderer_ready()) return;
@@ -407,6 +713,20 @@ namespace game_console
 
 				draw_input();
 			}
+			draw_devgui();
+		}
+
+		void init_devgui()
+		{
+			logger::write(logger::LOG_TYPE_DEBUG, "Init devgui");
+			devgui.comp.gui.clear();
+			devgui.open = false;
+			devgui.cursors.clear();
+			devgui.cursors.push_back(0);
+
+			game::Cbuf_AddText(0, "exec shield/devgui.cfg \n");
+			const char* mode = game::Com_SessionMode_GetAbbreviationForMode(game::Com_SessionMode_GetMode());
+			game::Cbuf_AddText(0, utilities::string::va("exec shield/devgui_%s.cfg \n", mode));
 		}
 	}
 
@@ -548,6 +868,15 @@ namespace game_console
 
 	bool console_key_event(const int local_client_num, const int key, const int down)
 	{
+		if (key == game::keyNum_t::K_F1)
+		{
+			if (down)
+			{
+				toggle_devgui();
+			}
+			return false;
+		}
+
 		if (key == game::keyNum_t::K_GRAVE || key == game::keyNum_t::K_TILDE)
 		{
 			if (!down)
@@ -570,6 +899,73 @@ namespace game_console
 			toggle_console();
 
 			return false;
+		}
+
+		if (devgui.open && down)
+		{
+			if (key == game::keyNum_t::K_UPARROW)
+			{
+				if (devgui.cursors.size() > 1)
+				{
+					move_devgui(-1);
+				}
+				else
+				{
+					exit_devgui();
+				}
+				return false;
+			}
+
+			if (key == game::keyNum_t::K_DOWNARROW)
+			{
+				if (devgui.cursors.size() > 1)
+				{
+					move_devgui(1);
+				}
+				else
+				{
+					enter_devgui();
+				}
+				return false;
+			}
+
+			if (key == game::keyNum_t::K_RIGHTARROW)
+			{
+				if (devgui.cursors.size() > 1)
+				{
+					enter_devgui();
+				}
+				else
+				{
+					move_devgui(1);
+				}
+				return false;
+			}
+
+			if (key == game::keyNum_t::K_LEFTARROW)
+			{
+				if (devgui.cursors.size() > 1)
+				{
+					return_devgui();
+				}
+				else
+				{
+					move_devgui(-1);
+				}
+				return false;
+			}
+
+			if (key == game::keyNum_t::K_ENTER)
+			{
+				enter_devgui();
+				return false;
+			}
+
+			if (key == game::keyNum_t::K_ESCAPE)
+			{
+				return_devgui();
+				return false;
+			}
 		}
 
 		if (*game::keyCatchers & 1)
@@ -706,6 +1102,45 @@ namespace game_console
 		cl_char_event_hook.invoke<void>(localClientNum, key, isRepeated);
 	}
 
+	void devgui_cmd_f(const command::params& params)
+	{
+		if (params.size() < 3)
+		{
+			logger::write(logger::LOG_TYPE_ERROR, "Invalid devgui_cmd call, Usage: %s [path] [command]", params.get(0));
+			return;
+		}
+
+		// cleanup to avoid sync issues
+		devgui.cursors.clear();
+		exit_devgui();
+
+		std::string_view path{ params.get(1) };
+		const char* cmd = params.get(2);
+
+		size_t idx{};
+
+		ingame_devgui_component* comp{ &devgui.comp };
+
+		do
+		{
+			size_t start = idx;
+			idx = path.find('/', start);
+
+			if (idx == std::string::npos)
+			{
+				idx = path.size();
+			}
+
+			comp = &comp->find_or_create(std::string{ path.substr(start, idx - start) });
+
+			idx++; // skip path separator
+
+		} while (idx < path.size());
+
+		logger::write(logger::LOG_TYPE_DEBUG, "register command %s -> %s", comp->title.c_str(), cmd);
+
+		comp->action = cmd;
+	}
 
 	class component final : public component_interface
 	{
@@ -713,10 +1148,19 @@ namespace game_console
 		void post_unpack() override
 		{
 			scheduler::loop(draw_console, scheduler::renderer);
+			scheduler::loop(init_devgui, scheduler::spawn_server);
 
 			cl_key_event_hook.create(0x142839250_g, cl_key_event_stub);
 			cl_char_event_hook.create(0x142836F80_g, cl_char_event_stub);
 
+			// common config
+			mods::register_raw_asset("project-bo4/devgui.cfg", fnv1a::generate_hash("shield/devgui.cfg"));
+			// per mode config
+			for (size_t i = 0; i < game::eModes::MODE_COUNT; i++)
+			{
+				const char* mode = game::Com_SessionMode_GetAbbreviationForMode((game::eModes)i);
+				mods::register_raw_asset(utilities::string::va("project-bo4/devgui_%s.cfg", mode), fnv1a::generate_hash(utilities::string::va("shield/devgui_%s.cfg", mode)));
+			}
 
 			// initialize our structs
 			con.cursor = 0;
@@ -733,6 +1177,8 @@ namespace game_console
 
 			con.font_scale = 0.38f;
 			con.max_suggestions = 24;
+
+			command::add("devgui_cmd", devgui_cmd_f, "Register devgui command, Usage: devgui_cmd [Path] [Command]");
 		}
 	};
 }

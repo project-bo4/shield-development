@@ -14,6 +14,8 @@
 #include <utilities/io.hpp>
 #include <utilities/hook.hpp>
 
+#include "mods.hpp"
+
 namespace mods {
 	// GSC File magic (8 bytes)
 	constexpr uint64_t gsc_magic = 0x36000A0D43534780;
@@ -289,11 +291,18 @@ namespace mods {
 			std::unordered_set<uint64_t> hooks_gametype{};
 		};
 
+		struct lazy_rawfile_entry
+		{
+			std::filesystem::path path;
+			std::string buffer{};
+			xassets::raw_file_header header{};
+		};
 
 		class mod_storage
 		{
 		public:
 			std::mutex load_mutex{};
+			std::unordered_map<uint64_t, lazy_rawfile_entry> lazy_raw_asset{};
 			std::vector<char*> allocated_strings{};
 			std::vector<scriptparsetree> gsc_files{};
 			std::vector<raw_file> raw_files{};
@@ -417,7 +426,19 @@ namespace mods {
 				{
 					auto it = std::find_if(raw_files.begin(), raw_files.end(), [name](const raw_file& file) { return file.header.name == name; });
 
-					if (it == raw_files.end()) return nullptr;
+					if (it == raw_files.end())
+					{
+						auto it2 = lazy_raw_asset.find(name);
+
+						if (it2 == lazy_raw_asset.end() || !utilities::io::read_file(it2->second.path.string(), &it2->second.buffer))
+						{
+							return nullptr;
+						}
+
+						it2->second.header.buffer = it2->second.buffer.data();
+						it2->second.header.size = it2->second.buffer.size();
+						return &it2->second.header;
+					}
 
 					return it->get_header();
 				}
@@ -1334,6 +1355,17 @@ namespace mods {
 		}
 
 		return load;
+	}
+
+	void register_raw_asset(const std::filesystem::path& path, uint64_t name)
+	{
+		lazy_rawfile_entry& p = storage.lazy_raw_asset[name];
+		
+		p.path = path;
+		p.header.name = name;
+		static char default_buff[1]{};
+		p.header.buffer = default_buff;
+		p.header.size = 0;
 	}
 
 	utilities::hook::detour bg_cache_sync_hook;
