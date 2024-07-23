@@ -235,6 +235,7 @@ namespace mods {
 						}
 					}
 				}
+				return true;
 			}
 		};
 		struct lua_file
