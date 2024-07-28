@@ -4,7 +4,6 @@
 #include "dvars.hpp"
 #include "hashes.hpp"
 #include "command.hpp"
-#include "game_console.hpp"
 #include "loader/component_loader.hpp"
 
 #include "definitions/xassets.hpp"
@@ -1099,17 +1098,17 @@ namespace mods {
 			if (!game::Com_IsRunningUILevel())
 			{
 				// avoid gsc issues, but if a script is loaded in the frontend, it will still crash
-				game_console::print("can't load mods while in-game!"); 
+				logger::write(logger::LOG_TYPE_CONSOLE, "can't load mods while in-game!"); 
 				return;
 			}
 
 			if (!storage.load_mods())
 			{
-				game_console::print("mods reloaded.");
+				logger::write(logger::LOG_TYPE_CONSOLE, "mods reloaded.");
 			}
 			else
 			{
-				game_console::print("mods reloaded with errors, see logs.");
+				logger::write(logger::LOG_TYPE_CONSOLE, "mods reloaded with errors, see logs.");
 			}
 		}
 	}

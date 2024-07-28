@@ -159,7 +159,7 @@ namespace command
 		add(command, [f = std::move(function)](const params&)
 		{
 			f();
-		});
+		}, desc);
 	}
 
 	void add(const std::string& command, command_param_function function, const char* desc)

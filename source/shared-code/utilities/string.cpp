@@ -181,6 +181,30 @@ namespace utilities::string
 	}
 #pragma warning(pop)
 
+	void copy(char* dest, const size_t max_size, const char* src)
+	{
+		if (!max_size)
+		{
+			return;
+		}
+
+		for (size_t i = 0;; ++i)
+		{
+			if (i + 1 == max_size)
+			{
+				dest[i] = 0;
+				break;
+			}
+
+			dest[i] = src[i];
+
+			if (!src[i])
+			{
+				break;
+			}
+		}
+	}
+
 	std::string replace(std::string str, const std::string& from, const std::string& to)
 	{
 		if (from.empty())
@@ -198,6 +222,46 @@ namespace utilities::string
 		return str;
 	}
 
+	std::string& ltrim(std::string& str)
+	{
+		str.erase(str.begin(), std::find_if(str.begin(), str.end(), [](const unsigned char input)
+			{
+				return !std::isspace(input);
+			}));
+
+		return str;
+	}
+
+	std::string& rtrim(std::string& str)
+	{
+		str.erase(std::find_if(str.rbegin(), str.rend(), [](const  unsigned char input)
+			{
+				return !std::isspace(input);
+			}).base(), str.end());
+
+		return str;
+	}
+
+	std::string& trim(std::string& str)
+	{
+		return ltrim(rtrim(str));
+	}
+
+	bool is_truely_empty(std::string str)
+	{
+		return trim(str).size() == 0;
+	}
+
+	StringMatch compare(const std::string& s1, const std::string& s2)
+	{
+		if (s1 == s2)
+			return StringMatch::Identical;
+		else if (to_lower(s1) == to_lower(s2))
+			return StringMatch::CaseVariant;
+		else
+			return StringMatch::Mismatch;
+	}
+
 	double match(const std::string& input, const std::string& text)
 	{
 		if (text == input) return 1.00; // identical
@@ -211,13 +275,6 @@ namespace utilities::string
 		return ((double)match_percent / 100);
 	}
 
-	bool compare(const std::string& s1, const std::string& s2, bool sensetive)
-	{
-		if (sensetive && (s1 == s2)) return true;
-		if (!sensetive && (to_lower(s1) == to_lower(s2))) return true;
-		return false;
-	}
-	
 	bool contains(std::string text, std::string substr, bool sensetive)
 	{
 		if (!sensetive) {

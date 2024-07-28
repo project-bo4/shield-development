@@ -5,9 +5,6 @@
 
 #include <utilities/nt.hpp>
 
-#define OUTPUT_DEBUG_API
-#define OUTPUT_GAME_CONSOLE
-
 namespace logger
 {
 	const char* LogTypeNames[] =
@@ -15,7 +12,8 @@ namespace logger
 		"DEBUG",
 		"INFO",
 		"WARN",
-		"ERROR"
+		"ERROR",
+		""
 	};
 
 	void write(const int type, std::string str)
@@ -24,14 +22,13 @@ namespace logger
 		if (type == LOG_TYPE_DEBUG) return;
 #endif // _DEBUG
 
+		game_console::print(str);
+		if (type == type::LOG_TYPE_CONSOLE) return;
+
 		std::stringstream ss;
 		ss << "[ " << LogTypeNames[type] << " ] " << str << std::endl;
 
 		std::string text = ss.str();
-
-#ifdef OUTPUT_GAME_CONSOLE
-		game_console::print(text);
-#endif // OUTPUT_GAME_CONSOLE
 
 #ifdef OUTPUT_DEBUG_API
 		OutputDebugStringA(text.c_str());

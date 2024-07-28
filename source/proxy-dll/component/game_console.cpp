@@ -6,6 +6,7 @@
 
 #include "component/dvars.hpp"
 #include "component/scheduler.hpp"
+#include "component/keycatchers.hpp"
 
 #include <utilities/hook.hpp>
 #include <utilities/string.hpp>
@@ -437,8 +438,7 @@ namespace game_console
 		}
 	}
 
-
-	bool console_char_event(const int local_client_num, const int key)
+	bool console_char_event(const int local_client_num, const int key, const bool is_repeated)
 	{
 		if (key == game::keyNum_t::K_GRAVE ||
 			key == game::keyNum_t::K_TILDE ||
@@ -490,7 +490,7 @@ namespace game_console
 
 				for (size_t i = 0; i < clipboard.length(); i++)
 				{
-					console_char_event(local_client_num, clipboard[i]);
+					console_char_event(local_client_num, clipboard[i], false);
 				}
 
 				return false;
@@ -546,7 +546,7 @@ namespace game_console
 		return true;
 	}
 
-	bool console_key_event(const int local_client_num, const int key, const int down)
+	bool console_key_event(const int local_client_num, const int key, const bool down, const unsigned int time)
 	{
 		if (key == game::keyNum_t::K_GRAVE || key == game::keyNum_t::K_TILDE)
 		{
@@ -650,10 +650,8 @@ namespace game_console
 						});
 				}
 
-				if (key == game::keyNum_t::K_ENTER)
+				if (key == game::keyNum_t::K_ENTER && !utilities::string::is_truely_empty(con.buffer))
 				{
-					//game::Cbuf_AddText(0, utilities::string::va("%s \n", fixed_input.data()));
-
 					if (history_index != -1)
 					{
 						const auto itr = history.begin() + history_index;
@@ -684,29 +682,6 @@ namespace game_console
 		return true;
 	}
 
-	utilities::hook::detour cl_key_event_hook;
-	void cl_key_event_stub(int localClientNum, int key, bool down, unsigned int time)
-	{
-		if (!game_console::console_key_event(localClientNum, key, down))
-		{
-			return;
-		}
-
-		cl_key_event_hook.invoke<void>(localClientNum, key, down, time);
-	}
-
-	utilities::hook::detour cl_char_event_hook;
-	void cl_char_event_stub(const int localClientNum, const int key, bool isRepeated)
-	{
-		if (!game_console::console_char_event(localClientNum, key))
-		{
-			return;
-		}
-
-		cl_char_event_hook.invoke<void>(localClientNum, key, isRepeated);
-	}
-
-
 	class component final : public component_interface
 	{
 	public:
@@ -714,9 +689,8 @@ namespace game_console
 		{
 			scheduler::loop(draw_console, scheduler::renderer);
 
-			cl_key_event_hook.create(0x142839250_g, cl_key_event_stub);
-			cl_char_event_hook.create(0x142836F80_g, cl_char_event_stub);
-
+			keycatchers::add_key_event(console_key_event);
+			keycatchers::add_char_event(console_char_event);
 
 			// initialize our structs
 			con.cursor = 0;

@@ -100,9 +100,28 @@ namespace utilities::string
 	std::string convert(const std::wstring& wstr);
 	std::wstring convert(const std::string& str);
 
+	void copy(char* dest, size_t max_size, const char* src);
+
+	template <size_t Size>
+	void copy(char(&dest)[Size], const char* src)
+	{
+		copy(dest, Size, src);
+	}
+
 	std::string replace(std::string str, const std::string& from, const std::string& to);
 
+	std::string& trim(std::string& str);
+
+	bool is_truely_empty(std::string str);
+
+	enum StringMatch
+	{
+		Mismatch = 0,
+		Identical = 1,
+		CaseVariant = 2
+	};
+
+	StringMatch compare(const std::string& s1, const std::string& s2);
 	double match(const std::string& input, const std::string& text);
-	bool compare(const std::string& s1, const std::string& s2, bool sensetive = false);
 	bool contains(std::string text, std::string substr, bool sensetive = false);
 }
