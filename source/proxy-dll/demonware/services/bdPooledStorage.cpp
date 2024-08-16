@@ -34,8 +34,8 @@ namespace demonware
 			std::string metafile = fileshare::get_metadata_path(fileshare::get_file_name(fileID));
 
 			fileshare::FileMetadata metadata;
-			if (metadata.ReadMetaDataJson(metafile, metadata.FILE_STATUS_DESCRIBED)
-				&& utilities::io::file_exists(fileshare::get_file_path(metadata.fileName)))
+			if (metadata.ReadMetaDataJson(metafile, metadata.FILE_STATE_DESCRIBED)
+				&& utilities::io::file_exists(fileshare::get_file_path(metadata.ioFileName)))
 			{
 				auto taskResult = new bdFileMetaData;
 				metadata.MetadataTaskResult(taskResult, false);
@@ -64,14 +64,14 @@ namespace demonware
 		metadata.author.name = platform::bnet_get_username();
 
 		metadata.category = static_cast<fileshare::fileshareCategory_e>(category);
-		metadata.fileName = fileshare::get_file_name(metadata.file.id, metadata.category);
+		metadata.ioFileName = fileshare::get_file_name(metadata.file.id, metadata.category);
 
-		metadata.WriteMetaDataJson(fileshare::get_metadata_path(metadata.fileName), metadata.FILE_STATUS_UPLOADING);
+		metadata.WriteMetaDataJson(fileshare::get_metadata_path(metadata.ioFileName), metadata.FILE_STATE_UPLOADING);
 
 		auto reply = server->create_reply(this->task_id());
 
 		auto result = new bdURL;
-		result->m_url = fileshare::get_file_url(metadata.fileName);
+		result->m_url = fileshare::get_file_url(metadata.ioFileName);
 		result->m_serverType = 8;
 		result->m_serverIndex = "fs";
 		result->m_fileID = metadata.file.id;
@@ -94,10 +94,11 @@ namespace demonware
 
 		fileshare::FileMetadata metadata;
 		if (metadata.ReadMetaDataJson(metafile)) {
+			auto ioSize = utilities::io::file_size(fileshare::get_file_path(metadata.ioFileName));
 			metadata.file.size = fileSize;
-			metadata.fileSize = utilities::io::file_size(fileshare::get_file_path(metadata.fileName));
+			metadata.ioFileSize = static_cast<uint32_t>(ioSize);
 
-			metadata.WriteMetaDataJson(metafile, metadata.FILE_STATUS_UPLOADED);
+			metadata.WriteMetaDataJson(metafile, metadata.FILE_STATE_UPLOADED);
 		}
 
 		auto reply = server->create_reply(this->task_id());
@@ -124,8 +125,8 @@ namespace demonware
 		std::string metafile = fileshare::get_metadata_path(fileshare::get_file_name(fileID));
 
 		fileshare::FileMetadata metadata;
-		if (metadata.ReadMetaDataJson(metafile, metadata.FILE_STATUS_DESCRIBED)
-			&& utilities::io::file_exists(fileshare::get_file_path(metadata.fileName)))
+		if (metadata.ReadMetaDataJson(metafile, metadata.FILE_STATE_DESCRIBED)
+			&& utilities::io::file_exists(fileshare::get_file_path(metadata.ioFileName)))
 		{
 			auto reply = server->create_reply(this->task_id());
 
@@ -145,7 +146,6 @@ namespace demonware
 	void bdPooledStorage::_preUploadSummary(service_server* server, byte_buffer* buffer) const
 	{
 		uint64_t fileID{}; uint32_t fileSize{};
-		//std::string DDL_MetaData;
 		buffer->read_uint64(&fileID);
 		buffer->read_uint32(&fileSize);
 
@@ -153,10 +153,10 @@ namespace demonware
 
 		fileshare::FileMetadata metadata;
 		if (metadata.ReadMetaDataJson(metafile)) {
-			buffer->read_blob(&metadata.ddl_metadata);
+			buffer->read_blob(&metadata.ddlMetadata);
 			buffer->read_array(10, &metadata.tags);
 
-			metadata.WriteMetaDataJson(metafile, metadata.FILE_STATUS_DESCRIBED);
+			metadata.WriteMetaDataJson(metafile, metadata.FILE_STATE_DESCRIBED);
 		}
 
 		auto reply = server->create_reply(this->task_id(), 108/*BD_SERVICE_NOT_AVAILABLE*/);

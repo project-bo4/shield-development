@@ -141,11 +141,10 @@ namespace demonware
 		std::vector<std::string> uploaded_objects_list;
 
 		const rapidjson::Value& objects = vectorized_upload_json["objects"];
-		for (rapidjson::SizeType i = 0; i < objects.Size(); i++) // Uses SizeType instead of size_t
+		for (rapidjson::SizeType i = 0; i < objects.Size(); i++)
 		{
 			const rapidjson::Value& content = objects[i]["content"];
 			const rapidjson::Value& name = objects[i]["metadata"]["name"];
-			const rapidjson::Value& checksum = objects[i]["metadata"]["checksum"];
 
 			std::string data = utilities::cryptography::base64::decode(content.GetString());
 			const auto path = std::format("{}/{}", platform::get_userdata_directory(), name.GetString());

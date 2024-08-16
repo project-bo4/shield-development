@@ -122,6 +122,6 @@ namespace utilities::string
 	};
 
 	StringMatch compare(const std::string& s1, const std::string& s2);
-	double match(const std::string& input, const std::string& text);
+	float match(const std::string& input, const std::string& text);
 	bool contains(std::string text, std::string substr, bool sensetive = false);
 }

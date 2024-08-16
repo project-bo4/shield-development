@@ -13,7 +13,7 @@ namespace console
 	namespace
 	{
 		const char* branding_str = "shield> ";
-		size_t branding_length = std::strlen(branding_str);
+		int branding_length = static_cast<int>(std::strlen(branding_str));
 
 		utilities::hook::detour printf_hook;
 		std::recursive_mutex print_mutex;

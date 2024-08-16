@@ -129,7 +129,7 @@ namespace game_console
 			con.screen_max[1] = game::ScrPlace_GetView(0)->realViewportSize[1] - 6.0f;
 
 			con.font_height = static_cast<float>(game::UI_TextHeight(R_DrawTextFont, con.font_scale));
-			con.visible_line_count = static_cast<int>((con.screen_max[1] - con.screen_min[1] - (con.font_height * 2)) - 24.0f) / con.font_height;
+			con.visible_line_count = static_cast<int>(((con.screen_max[1] - con.screen_min[1] - (con.font_height * 2)) - 24.0f) / con.font_height);
 		}
 
 		void draw_box(const float x, const float y, const float w, const float h, float* color)
@@ -376,9 +376,9 @@ namespace game_console
 					auto height = ((con.screen_max[1] - con.screen_min[1]) - 32.0f) - 12.0f;
 
 					char sysinfo_version[256];
-					bool result1 = utilities::hook::invoke<bool>(game::Live_SystemInfo, 0, 0, sysinfo_version, 256);
+					utilities::hook::invoke<bool>(game::Live_SystemInfo, 0, 0, sysinfo_version, 256);
 					char sysinfo_livebits[256];
-					bool result2 = utilities::hook::invoke<bool>(game::Live_SystemInfo, 0, 1, sysinfo_livebits, 256);
+					utilities::hook::invoke<bool>(game::Live_SystemInfo, 0, 1, sysinfo_livebits, 256);
 					const char* info = utilities::string::va("Project-BO4 1.0.0, Engine Version: %s, LiveBits: %s", sysinfo_version, sysinfo_livebits);
 
 					game::R_AddCmdDrawText(info, 0x7FFFFFFF, R_DrawTextFont, x, ((height - 16.0f) + y) + con.font_height, con.font_scale, con.font_scale, 0.0f, con_outputVersionStringColor, 0);

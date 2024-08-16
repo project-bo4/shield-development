@@ -215,22 +215,47 @@ BOOL WINAPI DllMain(HINSTANCE, const DWORD reason, LPVOID)
 	return TRUE;
 }
 
-extern "C" __declspec(dllexport)
-HRESULT D3D11CreateDevice(void* adapter, const uint64_t driver_type,
-	const HMODULE software, const UINT flags,
-	const void* p_feature_levels, const UINT feature_levels,
-	const UINT sdk_version, void** device, void* feature_level,
-	void** immediate_context)
+extern "C"
 {
-	static auto func = []
+	__declspec(dllexport) DWORD XInputGetCapabilities(DWORD dwUserIndex, DWORD dwFlags, struct XINPUT_CAPABILITIES* pCapabilities)
 	{
-		char dir[MAX_PATH]{ 0 };
-		GetSystemDirectoryA(dir, sizeof(dir));
+		static auto func = []
+		{
+			char dir[MAX_PATH]{ 0 };
+			GetSystemDirectoryA(dir, sizeof(dir));
 
-		const auto d3d11 = utilities::nt::library::load(dir + "/d3d11.dll"s);
-		return d3d11.get_proc<decltype(&D3D11CreateDevice)>("D3D11CreateDevice");
-	}();
+			const auto d3d12 = utilities::nt::library::load(dir + "/XInput9_1_0.dll"s);
+			return d3d12.get_proc<decltype(&XInputGetCapabilities)>("XInputGetCapabilities");
+		}();
 
-	return func(adapter, driver_type, software, flags, p_feature_levels, feature_levels, sdk_version, device,
-		feature_level, immediate_context);
+		return func(dwUserIndex, dwFlags, pCapabilities);
+	}
+
+	__declspec(dllexport) DWORD XInputSetState(DWORD dwUserIndex, struct XINPUT_VIBRATION* pVibration)
+	{
+		static auto func = []
+		{
+			char dir[MAX_PATH]{ 0 };
+			GetSystemDirectoryA(dir, sizeof(dir));
+
+			const auto d3d12 = utilities::nt::library::load(dir + "/XInput9_1_0.dll"s);
+			return d3d12.get_proc<decltype(&XInputSetState)>("XInputSetState");
+		}();
+
+		return func(dwUserIndex, pVibration);
+	}
+
+	__declspec(dllexport) DWORD XInputGetState(DWORD dwUserIndex, struct XINPUT_STATE* pState)
+	{
+		static auto func = []
+		{
+			char dir[MAX_PATH]{ 0 };
+			GetSystemDirectoryA(dir, sizeof(dir));
+
+			const auto d3d12 = utilities::nt::library::load(dir + "/XInput9_1_0.dll"s);
+			return d3d12.get_proc<decltype(&XInputGetState)>("XInputGetState");
+		}();
+
+		return func(dwUserIndex, pState);
+	}
 }

@@ -10,7 +10,7 @@ namespace unlockall
 {
 	namespace
 	{
-		uint32_t zm_loot_table[] =
+		int zm_loot_table[] =
 		{
 			1000001,			// zm_bgb_ctrl_z
 			1000002,			// zm_bgb_dead_of_nuclear_winter

@@ -318,11 +318,13 @@ project "shared-code"
 
     dependencies.imports()
 
+	disablewarnings { "4244" }
+
 project "proxy-dll"
     kind "SharedLib"
     language "C++"
 
-    targetname "d3d11"
+    targetname "XInput9_1_0"
 
     pchheader "std_include.hpp"
     pchsource "source/proxy-dll/std_include.cpp"
@@ -340,7 +342,8 @@ project "proxy-dll"
     end
 
     dependencies.imports()
-
+	
+	disablewarnings { "4244" }
 
 group "Dependencies"
     dependencies.projects()

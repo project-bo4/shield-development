@@ -1,7 +1,7 @@
 #include <std_include.hpp>
 #include "objects.hpp"
 
-#include "protobuf_helper.hpp"
+#include "protobuf.hpp"
 
 #include "resource.hpp"
 #include <utilities/nt.hpp>

@@ -73,17 +73,17 @@ namespace demonware::fileshare
 		rapidjson::Document jsonDocument(rapidjson::kObjectType);
 		rapidjson::Document::AllocatorType& allocator = jsonDocument.GetAllocator();
 		
-		jsonDocument.AddMember("status", this->status, allocator);
+		jsonDocument.AddMember("status", this->state, allocator);
 		jsonDocument.AddMember("category", this->category, allocator);
-		jsonDocument.AddMember("fileName", this->fileName, allocator);
-		if (this->status == FILE_STATUS_UPLOADED || this->status == FILE_STATUS_DESCRIBED) {
-			jsonDocument.AddMember("fileSize", this->fileSize, allocator);
+		jsonDocument.AddMember("fileName", this->ioFileName, allocator);
+		if (this->state == FILE_STATE_UPLOADED || this->state == FILE_STATE_DESCRIBED) {
+			jsonDocument.AddMember("fileSize", this->ioFileSize, allocator);
 		}
 
 		rapidjson::Value fileInfo(rapidjson::kObjectType);
 		fileInfo.AddMember("id", this->file.id, allocator);
 		fileInfo.AddMember("name", this->file.name, allocator);
-		if (this->status == FILE_STATUS_UPLOADED || this->status == FILE_STATUS_DESCRIBED) {
+		if (this->state == FILE_STATE_UPLOADED || this->state == FILE_STATE_DESCRIBED) {
 			fileInfo.AddMember("size", this->file.size, allocator);
 		}
 		fileInfo.AddMember("timestamp", this->file.timestamp, allocator);
@@ -94,7 +94,7 @@ namespace demonware::fileshare
 		fileAuthor.AddMember("xuid", this->author.xuid, allocator);
 		jsonDocument.AddMember("author", fileAuthor, allocator);
 
-		if (this->status == FILE_STATUS_DESCRIBED) {
+		if (this->state == FILE_STATE_DESCRIBED) {
 			rapidjson::Value fileTags(rapidjson::kObjectType);
 			for (const auto& tag : this->tags)
 			{
@@ -103,7 +103,7 @@ namespace demonware::fileshare
 			}
 			jsonDocument.AddMember("tags", fileTags, allocator);
 
-			jsonDocument.AddMember("metadata", utilities::cryptography::base64::encode(ddl_metadata), allocator);
+			jsonDocument.AddMember("metadata", utilities::cryptography::base64::encode(ddlMetadata), allocator);
 		}
 	
 		rapidjson::StringBuffer strbuf;
@@ -119,7 +119,7 @@ namespace demonware::fileshare
 		jsonDocument.Parse(MetaDoc);
 
 		if (jsonDocument.HasMember("status") && jsonDocument["status"].IsInt()) {
-			this->status = static_cast<file_status>(jsonDocument["status"].GetInt());
+			this->state = static_cast<file_state>(jsonDocument["status"].GetInt());
 		}
 
 		if (jsonDocument.HasMember("category") && jsonDocument["category"].IsInt()) {
@@ -127,13 +127,13 @@ namespace demonware::fileshare
 		}
 
 		if (jsonDocument.HasMember("fileName") && jsonDocument["fileName"].IsString()) {
-			this->fileName = jsonDocument["fileName"].GetString();
+			this->ioFileName = jsonDocument["fileName"].GetString();
 		}
 
-		if ((this->status == FILE_STATUS_UPLOADED || this->status == FILE_STATUS_DESCRIBED)
-			&& jsonDocument.HasMember("fileSize") && jsonDocument["fileSize"].IsUint64()) 
+		if ((this->state == FILE_STATE_UPLOADED || this->state == FILE_STATE_DESCRIBED)
+			&& jsonDocument.HasMember("fileSize") && jsonDocument["fileSize"].IsUint()) 
 		{
-			this->fileSize = jsonDocument["fileSize"].GetUint64();
+			this->ioFileSize = jsonDocument["fileSize"].GetUint();
 		}
 
 		if (jsonDocument.HasMember("file") && jsonDocument["file"].IsObject())
@@ -147,7 +147,7 @@ namespace demonware::fileshare
 				this->file.name = fileInfo["name"].GetString();
 				this->file.timestamp = fileInfo["timestamp"].GetUint();
 			}
-			if ((this->status == FILE_STATUS_UPLOADED || this->status == FILE_STATUS_DESCRIBED)
+			if ((this->state == FILE_STATE_UPLOADED || this->state == FILE_STATE_DESCRIBED)
 				&& fileInfo.HasMember("size") && fileInfo["size"].IsUint())
 			{
 				this->file.size = fileInfo["size"].GetUint();
@@ -165,7 +165,7 @@ namespace demonware::fileshare
 			}
 		}
 
-		if (this->status == FILE_STATUS_DESCRIBED) {
+		if (this->state == FILE_STATE_DESCRIBED) {
 			if (jsonDocument.HasMember("tags") && jsonDocument["tags"].IsObject())
 			{
 				rapidjson::Value& fileTags = jsonDocument["tags"];
@@ -181,39 +181,39 @@ namespace demonware::fileshare
 			{
 				rapidjson::Value& ddl_field = jsonDocument["metadata"];
 				std::string metadata_b64(ddl_field.GetString(), ddl_field.GetStringLength());
-				this->ddl_metadata = utilities::cryptography::base64::decode(metadata_b64);
+				this->ddlMetadata = utilities::cryptography::base64::decode(metadata_b64);
 			}
 		}
 
-		if (this->status == FILE_STATUS_DESCRIBED) {
-			return (this->fileName.size() && this->file.id && this->ddl_metadata.size());
+		if (this->state == FILE_STATE_DESCRIBED) {
+			return (this->ioFileName.size() && this->file.id && this->ddlMetadata.size());
 		}
-		else if (this->status == FILE_STATUS_UPLOADED) {
-			return (this->fileName.size() && this->file.id && this->fileSize);
+		else if (this->state == FILE_STATE_UPLOADED) {
+			return (this->ioFileName.size() && this->file.id && this->ioFileSize);
 		}
 		else {
-			return (this->fileName.size() && this->file.id && this->file.name.size());
+			return (this->ioFileName.size() && this->file.id && this->file.name.size());
 		}
 	}
 
 	bool FileMetadata::MetadataTaskResult(bdFileMetaData* output, bool download)
 	{
-		if (this->status == FILE_STATUS_DESCRIBED)
+		if (this->state == FILE_STATE_DESCRIBED)
 		{
 			output->m_fileID = this->file.id;
 			output->m_createTime = this->file.timestamp;
 			output->m_modifedTime = output->m_createTime;
-			output->m_fileSize = this->fileSize;
+			output->m_fileSize = this->ioFileSize;
 			output->m_ownerID = this->author.xuid;
 			output->m_ownerName = this->author.name;
 			output->m_fileSlot = 0;
 			output->m_fileName = this->file.name;
 			output->m_category = this->category;
-			output->m_metaData = this->ddl_metadata;
+			output->m_metaData = this->ddlMetadata;
 			output->m_summaryFileSize = 0; // what!?
 
 			if (download) {
-				output->m_url = get_file_url(this->fileName);
+				output->m_url = get_file_url(this->ioFileName);
 			}
 			else {
 				output->m_tags = this->tags;
@@ -226,23 +226,23 @@ namespace demonware::fileshare
 		}
 	}
 
-	bool FileMetadata::ReadMetaDataJson(const std::string& file, file_status expect)
+	bool FileMetadata::ReadMetaDataJson(const std::string& path, file_state expect)
 	{
 		std::string json;
-		if (utilities::io::read_file(file, &json))
+		if (utilities::io::read_file(path, &json))
 		{
 			return (this->ParseMetaJSON(json)
-				&& (this->status == expect || expect == FILE_STATUS_UNKNOWN));
+				&& (this->state == expect || expect == FILE_STATE_UNKNOWN));
 		}
 		else {
 			return false;
 		}
 	}
 
-	bool FileMetadata::WriteMetaDataJson(const std::string& file, file_status status)
+	bool FileMetadata::WriteMetaDataJson(const std::string& path, file_state _state)
 	{
-		if(status != FILE_STATUS_UNKNOWN) this->status = status;
-		return utilities::io::write_file(file, this->SerializeMetaJSON());
+		if(_state != FILE_STATE_UNKNOWN) this->state = _state;
+		return utilities::io::write_file(path, this->SerializeMetaJSON());
 	}
 
 	std::vector<uint64_t> fileshare_list_demo_ids()

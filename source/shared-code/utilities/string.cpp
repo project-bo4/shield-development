@@ -262,17 +262,17 @@ namespace utilities::string
 			return StringMatch::Mismatch;
 	}
 
-	double match(const std::string& input, const std::string& text)
+	float match(const std::string& input, const std::string& text)
 	{
 		if (text == input) return 1.00; // identical
 
-		size_t offset = to_lower(text).find(to_lower(input));
+		auto offset = to_lower(text).find(to_lower(input));
 		if (offset == std::string::npos) return 0.00; // mismatch
 
-		int len_variance = text.length() - input.length();
-		int match_percent = 100 - (1 + len_variance + offset);
+		auto len_variance = text.length() - input.length();
+		size_t match_percent = 100 - (1 + len_variance + offset);
 
-		return ((double)match_percent / 100);
+		return (static_cast<float>(match_percent) / 100);
 	}
 
 	bool contains(std::string text, std::string substr, bool sensetive)

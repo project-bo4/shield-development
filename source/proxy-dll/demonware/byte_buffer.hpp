@@ -111,7 +111,7 @@ namespace demonware
 			const auto using_types = this->is_using_data_types();
 			this->set_use_data_types(false);
 
-			auto result = write_array_header(type, vec.size(), sizeof(T));
+			auto result = write_array_header(type, INT(vec.size()), sizeof(T));
 
 			for (size_t i = 0; i < vec.size(); i++)
 			{
@@ -128,7 +128,7 @@ namespace demonware
 			const auto using_types = this->is_using_data_types();
 			this->set_use_data_types(false);
 
-			auto result = write_array_header(type, map.size() * 2, sizeof(T));
+			auto result = write_array_header(type, INT(map.size()) * 2, sizeof(T));
 
 			for (const auto& item : map)
 			{

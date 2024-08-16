@@ -5,7 +5,7 @@ namespace demonware::fileshare
 {
     const char* get_fileshare_host_name();
 
-    enum fileshareCategory_e
+    enum fileshareCategory_e : uint16_t
     {
         FILESHARE_CATEGORY_ALL = 0,
         FILESHARE_CATEGORY_CONTENT_SERVER_START = 1,
@@ -38,7 +38,7 @@ namespace demonware::fileshare
         FILESHARE_CATEGORY_MDLC_LAST = 1999,
         FILESHARE_CATEGORY_AVI = 32768,
         FILESHARE_CATEGORY_EXEMONITOR = 32769,
-        FILESHARE_CATEGORY_INVALID = -1
+        FILESHARE_CATEGORY_INVALID = 0xFFFF
     };
 
     const char* get_category_extension(fileshareCategory_e cat);
@@ -59,14 +59,14 @@ namespace demonware::fileshare
         FileMetadata() = default;
         ~FileMetadata() = default;
 
-        enum file_status
+        enum file_state
         {
-            FILE_STATUS_UNKNOWN = 0,
-            FILE_STATUS_INVALID = -1,
-            FILE_STATUS_UPLOADING = 1,
-            FILE_STATUS_UPLOADED = 2,
-            FILE_STATUS_DESCRIBED = 3
-        } status{};
+            FILE_STATE_UNKNOWN = 0,
+            FILE_STATE_INVALID = -1,
+            FILE_STATE_UPLOADING = 1,
+            FILE_STATE_UPLOADED = 2,
+            FILE_STATE_DESCRIBED = 3
+        } state{};
 
         struct file_info
         {
@@ -83,20 +83,19 @@ namespace demonware::fileshare
         } author{};
 
         fileshareCategory_e category = FILESHARE_CATEGORY_ALL;
-        std::string fileName = "";
-        size_t fileSize = 0;
-        std::string ddl_metadata = "";
+        std::string ioFileName = "";
+        uint32_t ioFileSize = 0;
+        std::string ddlMetadata = "";
         std::map<uint64_t, uint64_t> tags;
 
         bool MetadataTaskResult(bdFileMetaData* output, bool download);
 
-        bool ReadMetaDataJson(const std::string& file, file_status expect = FILE_STATUS_UNKNOWN);
-        bool WriteMetaDataJson(const std::string& file, file_status status = FILE_STATUS_UNKNOWN);
+        bool ReadMetaDataJson(const std::string& path, file_state expect = FILE_STATE_UNKNOWN);
+        bool WriteMetaDataJson(const std::string& path, file_state _state = FILE_STATE_UNKNOWN);
 
     private:
         std::string SerializeMetaJSON();
         bool ParseMetaJSON(const std::string& input);
-
     };
 
     std::vector<uint64_t> fileshare_list_demo_ids();
