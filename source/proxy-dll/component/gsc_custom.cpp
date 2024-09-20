@@ -1,10 +1,13 @@
 #include <std_include.hpp>
 #include "gsc_custom.hpp"
 #include "gsc_funcs.hpp"
+#include "hashes.hpp"
 #include "definitions/game.hpp"
+#include "definitions/xassets.hpp"
 #include "loader/component_loader.hpp"
 #include <utilities/hook.hpp>
 #include <utilities/json_config.hpp>
+#include <utilities/string.hpp>
 
 namespace gsc_custom
 {
@@ -208,6 +211,20 @@ namespace gsc_custom
 		inst_data.emplace_back(info);
 	}
 
+	void vm_op_custom_devblock(game::scriptInstance_t inst, game::function_stack_t* fs_0, game::ScrVmContext_t* vmc, bool* terminate)
+	{
+		byte* base = align_ptr<int16_t>(fs_0->pos);
+		int16_t delta = *(int16_t*)base;
+
+		fs_0->pos = base + 2;
+
+		if (!gsc_funcs::enable_dev_blocks) {
+			// default action, jump after the dev block
+			fs_0->pos = fs_0->pos + delta;
+		}
+	}
+
+
 	void vm_op_custom_lazylink(game::scriptInstance_t inst, game::function_stack_t* fs_0, game::ScrVmContext_t* vmc, bool* terminate)
 	{
 		byte* base = align_ptr<uint32_t>(fs_0->pos);
@@ -290,7 +307,212 @@ namespace gsc_custom
 
 	}
 
+	void find_linking_issues()
+	{
+		logger::write(logger::LOG_TYPE_ERROR, "Linking error detected, searching cause...");
+
+		std::unordered_map<uint32_t, std::unordered_set<uint32_t>> availables{};
+		for (size_t _inst = 0; _inst < game::SCRIPTINSTANCE_MAX; _inst++)
+		{
+			size_t error{};
+			game::scriptInstance_t inst = (game::scriptInstance_t)_inst;
+			for (size_t obj = 0; obj < game::gObjFileInfoCount[inst]; obj++)
+			{
+				game::objFileInfo_t& info = (*game::gObjFileInfo)[inst][obj];
+
+				if (!info.activeVersion)
+				{
+					continue;
+				}
+
+				game::GSC_OBJ* prime_obj = info.activeVersion;
+
+				availables.clear();
+
+				// load exports
+				game::GSC_EXPORT_ITEM* exports = (game::GSC_EXPORT_ITEM*)(prime_obj->magic + prime_obj->exports_offset);
+
+				for (size_t i = 0; i < prime_obj->exports_count; i++)
+				{
+					availables[exports[i].name_space].insert(exports[i].name);
+				}
+
+				// load using exports
+				int64_t* usings = (int64_t*)(prime_obj->magic + prime_obj->include_offset);
+
+				for (size_t i = 0; i < prime_obj->include_count; i++)
+				{
+					game::BO4_AssetRef_t ref{ usings[i], 0 };
+					xassets::scriptparsetree_header* spt = xassets::DB_FindXAssetHeader(xassets::ASSET_TYPE_SCRIPTPARSETREE, &ref, false, -1).scriptparsetree;
+
+					if (!spt || !spt->buffer)
+					{
+						error++;
+						logger::write(logger::LOG_TYPE_ERROR, "[%s] Can't find #using %s in %s", inst ? "CSC" : "GSC", hashes::lookup_tmp("script", ref.hash), hashes::lookup_tmp("script", prime_obj->name));
+						continue;
+					}
+
+					game::GSC_EXPORT_ITEM* exports_using = (game::GSC_EXPORT_ITEM*)(spt->buffer->magic + spt->buffer->exports_offset);
+
+					for (size_t j = 0; j < spt->buffer->exports_count; j++)
+					{
+						if (exports_using[j].flags & game::GSC_EXPORT_FLAGS::GEF_PRIVATE)
+						{
+							continue; // can't import private exports
+						}
+						availables[exports_using[j].name_space].insert(exports_using[j].name);
+					}
+				}
+
+				game::GSC_IMPORT_ITEM* imports = (game::GSC_IMPORT_ITEM*)(prime_obj->magic + prime_obj->imports_offset);
+
+				for (size_t i = 0; i < prime_obj->imports_count; i++)
+				{
+					game::GSC_IMPORT_ITEM* imp = imports;
+
+					uint32_t* locations = reinterpret_cast<uint32_t*>(imp + 1);
+					imports = reinterpret_cast<game::GSC_IMPORT_ITEM*>(locations + imp->num_address);
+
+					if (imp->flags & game::GSC_IMPORT_FLAGS::GIF_DEV_CALL)
+					{
+						// ignore dev calls
+						continue;
+					}
+
+					auto itn = availables.find(imp->name_space);
+
+					if (itn != availables.end() && itn->second.contains(imp->name))
+					{
+						continue;
+					}
+
+					byte import_type = imp->flags & game::GSC_IMPORT_FLAGS::GIF_CALLTYPE_MASK;
+
+					// search builtin calls
+					if ((imp->flags & game::GSC_IMPORT_FLAGS::GIF_GET_CALL) != 0 || imp->name_space == 0xC1243180 || imp->name_space == 0x222276A9)
+					{
+
+						int type{};
+						int ignored{};
+						if (import_type == game::GSC_IMPORT_FLAGS::GIF_FUNC_METHOD || import_type == game::GSC_IMPORT_FLAGS::GIF_FUNCTION)
+						{
+							// &func or func()
+							if (inst)
+							{
+								if (game::CScr_GetFunction(imp->name, &type, &ignored, &ignored) && !type)
+								{
+									continue;
+								}
+							}
+							else
+							{
+								if (game::Scr_GetFunction(imp->name, &type, &ignored, &ignored) && !type)
+								{
+									continue;
+								}
+							}
+						}
+
+						if (import_type == game::GSC_IMPORT_FLAGS::GIF_FUNC_METHOD || import_type == game::GSC_IMPORT_FLAGS::GIF_METHOD)
+						{
+							// &meth or <x> meth()
+							if (inst)
+							{
+								if (game::CScr_GetMethod(imp->name, &type, &ignored, &ignored) && !type)
+								{
+									continue;
+								}
+							}
+							else
+							{
+								if (game::Scr_GetMethod(imp->name, &type, &ignored, &ignored) && !type)
+								{
+									continue;
+								}
+							}
+						}
+					}
+
+					const char* func;
+
+					if ((imp->flags & game::GSC_IMPORT_FLAGS::GIF_GET_CALL) != 0 || imp->name_space == 0xC1243180 || imp->name_space == 0x222276A9)
+					{
+						func = hashes::lookup_tmp("function", imp->name);
+					}
+					else
+					{
+						func = utilities::string::va("%s::%s", hashes::lookup_tmp("namespace", imp->name_space), hashes::lookup_tmp("function", imp->name));
+					}
+
+					const char* prefix;
+
+					switch (import_type)
+					{
+					case game::GIF_FUNC_METHOD:
+						prefix = "&";
+						break;
+					case game::GIF_FUNCTION:
+					case game::GIF_METHOD:
+						prefix = "";
+						break;
+					case game::GIF_FUNCTION_THREAD:
+					case game::GIF_METHOD_THREAD:
+						prefix = "thread ";
+						break;
+					case game::GIF_FUNCTION_CHILDTHREAD:
+					case game::GIF_METHOD_CHILDTHREAD:
+						prefix = "childthread ";
+						break;
+					default:
+						prefix = "<error>";
+						break;
+					}
+
+					logger::write(logger::LOG_TYPE_ERROR, "[%s] Unknown import %s%s in %s",
+						inst ? "CSC" : "GSC", prefix, func, hashes::lookup_tmp("script", prime_obj->name)
+					);
+					for (size_t j = 0; j < imp->num_address; j++)
+					{
+						const char* scriptname{};
+						int32_t sloc{};
+						int32_t crc{};
+						int32_t vm{};
+						game::Scr_GetGscExportInfo(inst, prime_obj->magic + locations[j], &scriptname, &sloc, &crc, &vm);
+						if (scriptname)
+						{
+							logger::write(logger::LOG_TYPE_ERROR, "[%s] at %s", inst ? "CSC" : "GSC", scriptname);
+						}
+						else
+						{
+							logger::write(logger::LOG_TYPE_ERROR, "[%s] at %s@%lx", inst ? "CSC" : "GSC", hashes::lookup_tmp("script", prime_obj->name), locations[j]);
+						}
+					}
+				}
+			}
+
+			if (error)
+			{
+				// convert the error to a terminal error to avoid a game crash
+				gsc_funcs::gsc_error("Find %lld GSC Linking error(s), see logs for more details", inst, true, error);
+				break;
+			}
+		}
+		// Can't find the error, we crash the server by default
+		gsc_funcs::gsc_error("GSC Linking error, see logs for more details", game::SCRIPTINSTANCE_SERVER, true);
+	}
+
+	void patch_linking_sys_error()
+	{
+		auto scr_get_gsc_obj = 0x142748BB0_g;
+
+		// skip the error and the autoexec
+		// 1C1 = syserr start
+		// 19F = end
+		utilities::hook::jump(scr_get_gsc_obj + 0x1C1, scr_get_gsc_obj + 0x19F);
+	}
+
 	utilities::hook::detour scr_get_gsc_obj_hook;
+	utilities::hook::detour gsc_obj_resolve_hook;
 	void scr_get_gsc_obj_stub(game::scriptInstance_t inst, game::BO4_AssetRef_t* name, bool runScript)
 	{
 		if (game::gObjFileInfoCount[inst] == 0)
@@ -305,16 +527,63 @@ namespace gsc_custom
 		gsc_custom::link_detours(inst);
 	}
 
+	int32_t gsc_obj_resolve_stub(game::scriptInstance_t inst, game::GSC_OBJ* prime_obj)
+	{
+		game::GSC_IMPORT_ITEM* import_item = prime_obj->get_imports();
+
+		for (size_t i = 0; i < prime_obj->imports_count; i++)
+		{
+			if ((import_item->flags & game::GIF_SHIELD_DEV_BLOCK_FUNC) != 0)
+			{
+				// enable or disable this dev import
+				if (gsc_funcs::enable_dev_blocks)
+				{
+					import_item->flags &= ~game::GIF_DEV_CALL;
+				}
+				else
+				{
+					import_item->flags |= game::GIF_DEV_CALL;
+				}
+			}
+
+			// goto to the next element after the addresses
+			uint32_t* addresses = reinterpret_cast<uint32_t*>(import_item + 1);
+			import_item = reinterpret_cast<game::GSC_IMPORT_ITEM*>(addresses + import_item->num_address);
+		}
+
+		bool dv_func_back = gsc_funcs::enable_dev_func;
+
+		if (gsc_funcs::enable_dev_blocks)
+		{
+			gsc_funcs::enable_dev_func = true;
+		}
+
+		int32_t ret = gsc_obj_resolve_hook.invoke<int32_t>(inst, prime_obj);
+
+		gsc_funcs::enable_dev_func = dv_func_back;
+
+		return ret;
+	}
+
 	class component final : public component_interface
 	{
 	public:
 		void post_unpack() override
 		{
 			// t8compiler custom opcode
-			game::gVmOpJumpTable[0x16] = vm_op_custom_lazylink;
+			game::gVmOpJumpTable[lazylink_opcode] = vm_op_custom_lazylink;
+			game::gVmOpJumpTable[shield_devblock_opcode] = vm_op_custom_devblock;
 
 			// group gsc link
 			scr_get_gsc_obj_hook.create(0x142748BB0_g, scr_get_gsc_obj_stub);
+
+			if (gsc_funcs::enable_dev_blocks)
+			{
+				gsc_obj_resolve_hook.create(0x142746A30_g, gsc_obj_resolve_stub);
+			}
+
+
+			patch_linking_sys_error();
 		}
 	};
 }
