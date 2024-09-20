@@ -6529,7 +6529,127 @@ namespace variables
 			"quit",
 			"Shutdown the Game [Com_Quit_f]",
 			0x1DEE6107B26F8BB6
-		}
+		},
+		{
+			"gts",
+			"Set gametype setting, Usage: gts <path> [<value>]",
+			0x55155818fad5c0df
+		},
+		{
+			"gametype_setting",
+			"Set gametype setting, Usage: gametype_setting <path> [<value>]",
+			0x46fb4ee1a7c51bcc
+		},
+		{
+			"set",
+			"Set dvar value, Usage: set <variable> <value>",
+			0x23b87195ce20e23
+		},
+		{
+			"setdvartotime",
+			"Set dvar value to time, Usage: setdvartotime <variable>",
+			0x1cc7ab7a4c8a4e7a
+		},
+		{
+			"reset",
+			"Reset dvar value, Usage: reset <variable>",
+			0xf136ff2c086b760
+		},
+		{
+			"lobby_errorshutdown",
+			"Shutdown lobby with error",
+			0x6a3a118a63f519a4
+		},
+		{
+			"lobby_reload",
+			"Reload lobby",
+			0x67ac003bb1f9cfc9
+		},
+		{
+			"map",
+			"Load map, Usage: map <map>",
+			0x80f5919176d2d91
+		},
+		{
+			"devmap",
+			"Load map in dev mode, Usage: devmap <map>",
+			0x7e4ea29057c5f962
+		},
+		{
+			"gametype",
+			"Set the gametype, Usage: gametype <gametype>",
+			0x6792c1f90c3a5c7f
+		},
+		{
+			"exec",
+			"Exec file, Usage: exec <config>",
+			0x67c75e608ea39b5c
+		},
+		{
+			"disconnect",
+			"Disconnect from server",
+			0x5926cb82738c446b
+		},
+		{
+			"reconnect",
+			"Reconnect to localhost",
+			0x31ab1e1fcc28efe6
+		},
+		{
+			"hostmigration_start",
+			"Start host migration",
+			0x6bf6f7867a2b3202
+		},
+		{
+			"setperk",
+			"Set a perk, Usage: setperk <perk>",
+			0x262eebca5ebf646b
+		},
+		{
+			"killserver",
+			"Shutdown the server",
+			0x64fb81c94800815e
+		},
+		{
+			"switchmaps",
+			"Switch now to the map",
+			0x182ae2b46edd075a
+		},
+		{
+			"msload",
+			"Start loading map switch, Usage: msload <map>",
+			0xddcb9fb38629fcd
+		},
+		{
+			"mspreload",
+			"Start loading map switch, Usage: mspreload <map>",
+			0x291b1ea6866a7cfa
+		},
+		{
+			"fast_restart",
+			"Fast restart",
+			0x506e7e29c6d674bb
+		},
+		{
+			"full_restart",
+			"Full restart",
+			0x7cba6d063fbd73d0
+		},
+		{
+			"clientkick_for_reason",
+			"Kick client with a reason, Usage: clientkick_for_reason <client number> <reason loc string>",
+			0x7086b005b6eb2871
+		},
+		{
+			"clientkick",
+			"Kick client, Usage: clientkick <client number>",
+			0x3e30e01add5a0b78
+		},
+		{
+			"clearpsdata",
+			"Clear PS data",
+			0x2e8816c78dd363c7
+		},
 	};
 
 	std::vector<const char*> get_dvars_list()
