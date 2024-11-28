@@ -34,7 +34,7 @@ namespace game
 		int32_t include_offset;
 		uint16_t string_count;
 		uint16_t exports_count;
-		int32_t start_data;
+		int32_t cseg_offset;
 		int32_t string_offset;
 		int16_t imports_count;
 		uint16_t fixup_count;
@@ -48,7 +48,7 @@ namespace game
 		int32_t script_size;
 		int32_t requires_implements_offset;
 		int32_t ukn50;
-		int32_t data_length;
+		int32_t cseg_size;
 		uint16_t include_count;
 		byte ukn5a;
 		byte requires_implements_count;
@@ -283,4 +283,157 @@ namespace game
 		int refCount;
 		uint32_t groupId;
 	};
+
+	enum GSC_EXPORT_FLAGS : byte
+	{
+		GEF_LINKED = 0x01,
+		GEF_AUTOEXEC = 0x02,
+		GEF_PRIVATE = 0x04,
+		GEF_CLASS_MEMBER = 0x08,
+		GEF_CLASS_DESTRUCTOR = 0x10,
+		GEF_VE = 0x20,
+		GEF_EVENT = 0x40,
+		GEF_CLASS_LINKED = 0x80,
+		GEF_CLASS_VTABLE = 0x86
+	};
+
+	enum GSC_IMPORT_FLAGS : byte
+	{
+		GIF_FUNC_METHOD = 0x1,
+		GIF_FUNCTION = 0x2,
+		GIF_FUNCTION_THREAD = 0x3,
+		GIF_FUNCTION_CHILDTHREAD = 0x4,
+		GIF_METHOD = 0x5,
+		GIF_METHOD_THREAD = 0x6,
+		GIF_METHOD_CHILDTHREAD = 0x7,
+		GIF_CALLTYPE_MASK = 0xF,
+		GIF_DEV_CALL = 0x10,
+		GIF_GET_CALL = 0x20,
+
+		GIF_SHIELD_DEV_BLOCK_FUNC = 0x80,
+	};
+
+	namespace acts_debug
+	{
+		constexpr uint64_t MAGIC = 0x0d0a42444124;
+		constexpr byte CURRENT_VERSION = 0x12;
+
+		enum GSC_ACTS_DEBUG_FEATURES : byte
+		{
+			ADF_STRING = 0x10,
+			ADF_DETOUR = 0x11,
+			ADF_DEVBLOCK_BEGIN = 0x12,
+			ADF_LAZYLINK = 0x12,
+			ADF_CRC_LOC = 0x13,
+			ADF_DEVSTRING = 0x14,
+			ADF_LINES = 0x15,
+			ADF_FILES = 0x15,
+			ADF_FLAGS = 0x15,
+		};
+
+		enum GSC_ACTS_DEBUG_FLAGS : uint32_t
+		{
+			ADFG_OBFUSCATED = 1 << 0,
+			ADFG_DEBUG = 1 << 1,
+			ADFG_CLIENT = 1 << 2,
+			ADFG_PLATFORM_SHIFT = 3,
+			ADFG_PLATFORM_MASK = 0xF << ADFG_PLATFORM_SHIFT,
+		};
+
+		struct GSC_ACTS_DETOUR
+		{
+			uint64_t name_space;
+			uint64_t name;
+			uint64_t script;
+			uint32_t location;
+			uint32_t size;
+		};
+
+		struct GSC_ACTS_LAZYLINK
+		{
+			uint64_t name_space;
+			uint64_t name;
+			uint64_t script;
+			uint32_t num_address;
+		};
+
+		struct GSC_ACTS_DEVSTRING
+		{
+			uint32_t string;
+			uint32_t num_address;
+		};
+
+		struct GSC_ACTS_LINES
+		{
+			uint32_t start;
+			uint32_t end;
+			size_t lineNum;
+		};
+
+		struct GSC_ACTS_FILES
+		{
+			uint32_t filename;
+			size_t lineStart;
+			size_t lineEnd;
+		};
+
+
+		struct GSC_ACTS_DEBUG
+		{
+			byte magic[sizeof(MAGIC)];
+			byte version;
+			uint32_t flags;
+			uint64_t actsVersion;
+			uint32_t strings_offset{};
+			uint32_t strings_count{};
+			uint32_t detour_offset{};
+			uint32_t detour_count{};
+			uint32_t devblock_offset{};
+			uint32_t devblock_count{};
+			uint32_t lazylink_offset{};
+			uint32_t lazylink_count{};
+			uint32_t crc_offset{};
+			uint32_t devstrings_offset{};
+			uint32_t devstrings_count{};
+			uint32_t lines_offset{};
+			uint32_t lines_count{};
+			uint32_t files_offset{};
+			uint32_t files_count{};
+
+			constexpr bool has_feature(GSC_ACTS_DEBUG_FEATURES feature) const
+			{
+				return version >= feature;
+			}
+
+			inline GSC_ACTS_DETOUR* get_detours(byte* start)
+			{
+				return reinterpret_cast<GSC_ACTS_DETOUR*>(start + detour_offset);
+			}
+
+			inline GSC_ACTS_DETOUR* get_detours_end(byte* start)
+			{
+				return get_detours(start) + detour_count;
+			}
+
+			inline uint32_t* get_devblocks(byte* start)
+			{
+				return reinterpret_cast<uint32_t*>(start + devblock_offset);
+			}
+
+			inline uint32_t* get_devblocks_end(byte* start)
+			{
+				return get_devblocks(start) + devblock_count;
+			}
+
+			inline uint32_t* get_strings(byte* start)
+			{
+				return reinterpret_cast<uint32_t*>(start + strings_offset);
+			}
+
+			inline uint32_t* get_strings_end(byte* start)
+			{
+				return get_strings(start) + strings_count;
+			}
+		};
+	}
 }
