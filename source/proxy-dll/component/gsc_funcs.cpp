@@ -947,6 +947,59 @@ namespace gsc_funcs
 
 			shield_from_json_push_struct(inst, doc);
 		}
+
+		void add_debug_command(game::scriptInstance_t inst)
+		{
+			int localclientnum;
+			const char* cmd;
+
+			if (inst == game::SCRIPTINSTANCE_CLIENT)
+			{
+				// client, using param
+				localclientnum = (int)game::ScrVm_GetInt(inst, 0);
+				cmd = game::ScrVm_GetString(inst, 1);
+			}
+			else
+			{
+				// server, using primary
+				localclientnum = game::Com_LocalClients_GetPrimary();
+				cmd = game::ScrVm_GetString(inst, 0);
+			}
+
+			game::Cbuf_AddText(localclientnum, cmd);
+		}
+
+		void hash_lookup(game::scriptInstance_t inst)
+		{
+			game::ScrVarType_t type = game::ScrVm_GetType(inst, 0);
+
+			switch (type)
+			{
+			case game::TYPE_STRING:
+				game::ScrVm_AddConstString(inst, game::ScrVm_GetConstString(inst, 0));
+				return;
+			case game::TYPE_HASH:
+			{
+				game::BO4_AssetRef_t hash;
+				const char* lookup = hashes::lookup(game::ScrVm_GetHash(&hash, inst, 0)->hash);
+
+				if (lookup)
+				{
+					game::ScrVm_AddString(inst, lookup);
+				}
+				else
+				{
+					// can't find value, return base hash
+					game::ScrVm_AddHash(inst, &hash);
+				}
+				return;
+			}
+			default:
+				gsc_error("invalid hash param, a hash or a string should be used, received: %s", inst, false, game::var_typename[type]);
+				return;
+			}
+		}
+
 		
 		game::BO4_BuiltinFunctionDef custom_functions_gsc[] =
 		{
@@ -1047,6 +1100,13 @@ namespace gsc_funcs
 				.max_args = 2,
 				.actionFunc = shield_to_json,
 				.type = 0
+			},
+			{// ShieldHashLookup(hash hash) -> string
+				.canonId = canon_hash("ShieldHashLookup"),
+				.min_args = 1,
+				.max_args = 1,
+				.actionFunc = hash_lookup,
+				.type = 0
 			}
 		};
 		game::BO4_BuiltinFunctionDef custom_functions_csc[] =
@@ -1141,6 +1201,13 @@ namespace gsc_funcs
 				.max_args = 2,
 				.actionFunc = shield_to_json,
 				.type = 0
+			},
+			{// ShieldHashLookup(hash hash) -> string
+				.canonId = canon_hash("ShieldHashLookup"),
+				.min_args = 1,
+				.max_args = 1,
+				.actionFunc = hash_lookup,
+				.type = 0
 			}
 		};
 
@@ -1175,6 +1242,7 @@ namespace gsc_funcs
 
 
 	bool enable_dev_func = false;
+	bool enable_dev_blocks = false;
 
 	utilities::hook::detour scr_get_function_reverse_lookup;
 	utilities::hook::detour cscr_get_function_reverse_lookup;
@@ -1394,7 +1462,7 @@ namespace gsc_funcs
 
 				game::GSC_OBJ* obj = info.activeVersion;
 
-				if (codepos >= obj->magic + obj->start_data && codepos < obj->magic + obj->start_data + obj->data_length)
+				if (codepos >= obj->magic + obj->cseg_offset && codepos < obj->magic + obj->cseg_offset + obj->cseg_size)
 				{
 					script_obj = obj;
 					break;
@@ -1461,10 +1529,19 @@ namespace gsc_funcs
 	class component final : public component_interface
 	{
 	public:
+		void pre_start() override
+		{
+			// enable dev functions
+			enable_dev_func = utilities::json_config::ReadBoolean("gsc", "dev_funcs", false);
+			// enable custom compiled dev blocks
+			enable_dev_blocks = utilities::json_config::ReadBoolean("gsc", "dev_blocks", false);
+		}
+
 		void post_unpack() override
 		{
-			// enable dev functions still available in the game
-			enable_dev_func = utilities::json_config::ReadBoolean("gsc", "dev_funcs", false);
+			// replace nulled function references
+			reinterpret_cast<game::BO4_BuiltinFunctionDef*>(0x144ED5D90_g)->actionFunc = add_debug_command; // csc
+			reinterpret_cast<game::BO4_BuiltinFunctionDef*>(0x1449BAD60_g)->actionFunc = add_debug_command; // gsc
 
 			scr_get_function_reverse_lookup.create(0x1433AF8A0_g, scr_get_function_reverse_lookup_stub);
 			cscr_get_function_reverse_lookup.create(0x141F132A0_g, cscr_get_function_reverse_lookup_stub);

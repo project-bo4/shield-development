@@ -7,6 +7,7 @@ namespace gsc_funcs
 	constexpr auto serious_custom_func_name = "SeriousCustom";
 
 	extern bool enable_dev_func;
+	extern bool enable_dev_blocks;
 
 	uint32_t canon_hash(const char* str);
 	uint32_t canon_hash_pattern(const char* str);

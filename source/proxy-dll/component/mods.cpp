@@ -6,8 +6,9 @@
 #include "command.hpp"
 #include "loader/component_loader.hpp"
 
-#include "definitions/xassets.hpp"
 #include "definitions/game.hpp"
+#include "definitions/xassets.hpp"
+#include "definitions/scripting.hpp"
 
 #include <utilities/io.hpp>
 #include <utilities/hook.hpp>
@@ -22,6 +23,13 @@ namespace mods {
 	std::filesystem::path mod_dir = "project-bo4/mods";
 
 	namespace {
+		template<typename T>
+		inline byte* align_ptr(byte* ptr)
+		{
+			return reinterpret_cast<byte*>((reinterpret_cast<uintptr_t>(ptr) + sizeof(T) - 1) & ~(sizeof(T) - 1));
+		}
+
+
 		struct raw_file
 		{
 			xassets::raw_file_header header{};
@@ -142,6 +150,89 @@ namespace mods {
 				// we need to remove the header to keep the alignment
 				data = data.substr(gsic_header_size, data.length() - gsic_header_size);
 
+				return true;
+			}
+
+			bool load_acts_debug()
+			{
+				if ((data.length() < sizeof(game::GSC_OBJ) + sizeof(game::acts_debug::MAGIC))
+					|| *reinterpret_cast<decltype(game::acts_debug::MAGIC)*>(&data[sizeof(game::GSC_OBJ)]) != game::acts_debug::MAGIC)
+				{
+					return true; // too small to be a debug file
+				}
+				game::acts_debug::GSC_ACTS_DEBUG& dbg = *reinterpret_cast<game::acts_debug::GSC_ACTS_DEBUG*>(data.data() + sizeof(game::GSC_OBJ));
+
+
+				logger::write(logger::LOG_TYPE_DEBUG, "loading acts debug file v%x.%llx", dbg.version, dbg.actsVersion);
+
+				byte* ptr = (byte*)data.data();
+
+				if (dbg.has_feature(game::acts_debug::ADF_STRING))
+				{
+					char* start = data.data();
+					for (uint32_t* strs = dbg.get_strings(ptr); strs != dbg.get_strings_end(ptr); strs++)
+					{
+						const char* val = data.data() + *strs;
+						hashes::add_hash(fnv1a::generate_hash(val), val);
+						hashes::add_hash(gsc_funcs::canon_hash(val), val);
+					}
+				}
+
+				if (dbg.has_feature(game::acts_debug::ADF_DETOUR))
+				{
+					for (game::acts_debug::GSC_ACTS_DETOUR* detours = dbg.get_detours(ptr); detours != dbg.get_detours_end(ptr); detours++)
+					{
+						gsc_custom::gsic_detour& detour = gsic.detours.emplace_back();
+
+						detour.fixup_name = 0;
+						detour.replace_namespace = detours->name_space;
+						detour.replace_function = detours->name;
+						detour.fixup_offset = detours->location;
+						detour.fixup_size = detours->size;
+						detour.target_script = detours->script;
+
+						logger::write(logger::LOG_TYPE_DEBUG, std::format(
+							"read detour : namespace_{:x}<script_{:x}>::function_{:x} / offset=0x{:x}+0x{:x}",
+							detour.replace_namespace, detour.target_script, detour.replace_function,
+							detour.fixup_offset, detour.fixup_size
+						));
+					}
+				}
+
+				if (gsc_funcs::enable_dev_blocks)
+				{
+					if (dbg.has_feature(game::acts_debug::ADF_DEVBLOCK_BEGIN))
+					{
+						if (dbg.devblock_count)
+						{
+							gsic.dev_blocks = true;
+
+							// we need to patch the dev function imports to load them
+
+							game::GSC_OBJ* prime_obj = (game::GSC_OBJ*)data.data();
+
+							game::GSC_IMPORT_ITEM* import_item = prime_obj->get_imports();
+
+							for (size_t i = 0; i < prime_obj->imports_count; i++)
+							{
+								// mark this function for the custom linker
+								if ((import_item->flags & game::GIF_DEV_CALL) != 0)
+								{
+									import_item->flags |= game::GIF_SHIELD_DEV_BLOCK_FUNC;
+								}
+
+								// goto to the next element after the addresses
+								uint32_t* addresses = reinterpret_cast<uint32_t*>(import_item + 1);
+								import_item = reinterpret_cast<game::GSC_IMPORT_ITEM*>(addresses + import_item->num_address);
+							}
+						}
+						for (uint32_t* devblock = dbg.get_devblocks(ptr); devblock != dbg.get_devblocks_end(ptr); devblock++)
+						{
+							byte* base = align_ptr<uint16_t>(ptr + *devblock);
+							*(uint16_t*)base = gsc_custom::shield_devblock_opcode;
+						}
+					}
+				}
 				return true;
 			}
 		};
@@ -427,15 +518,21 @@ namespace mods {
 						return false;
 					}
 
-					if (tmp.gsic.detours.size())
-					{
-						logger::write(logger::LOG_TYPE_DEBUG, std::format("loaded {} detours", tmp.gsic.detours.size()));
-					}
-
 					if (tmp.data.length() < sizeof(game::GSC_OBJ) || *reinterpret_cast<uint64_t*>(tmp.data.data()) != gsc_magic)
 					{
 						logger::write(logger::LOG_TYPE_ERROR, std::format("bad scriptparsetree magic in {} for mod {}", spt_path.string(), mod_name));
 						return false;
+					}
+
+					if (!tmp.load_acts_debug())
+					{
+						logger::write(logger::LOG_TYPE_ERROR, std::format("error when reading ACTS DEBUG header of {} for mod {}", spt_path.string(), mod_name));
+						return false;
+					}
+
+					if (tmp.gsic.detours.size())
+					{
+						logger::write(logger::LOG_TYPE_DEBUG, std::format("loaded {} detours", tmp.gsic.detours.size()));
 					}
 
 					// after this point we assume that the GSC file is well formatted
