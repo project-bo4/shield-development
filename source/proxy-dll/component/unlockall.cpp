@@ -99,7 +99,10 @@ namespace unlockall
 
 			return result;
 		}
-
+		
+		bool return_false() { return false; }
+		
+		
 		bool bg_unlockedgetchallengeunlockedforindex(game::eModes mode, int32_t controller, uint16_t index, int32_t itemIndex)
 		{
 			return true;
@@ -146,7 +149,9 @@ namespace unlockall
 	public:
 		void post_unpack() override
 		{
-			utilities::hook::jump(0x1437F6ED0_g, liveinventory_getitemquantity);
+			utilities::hook::jump(0x1438AE2F0_g, return_false); // patch LiveStats data source
+			
+			utilities::hook::jump(0x1437F6ED0_g, liveinventory_getitemquantity); // grant every loot item
 
 			utilities::hook::jump(0x1406BB410_g, bg_unlockedgetchallengeunlockedforindex);
 			utilities::hook::jump(0x1406B5530_g, bg_unlockablesitemoptionlocked);
