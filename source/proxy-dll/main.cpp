@@ -54,7 +54,7 @@ namespace
 	{
 		patch_import("user32.dll", "GetSystemMetrics", get_system_metrics);
 
-		//utilities::hook::set(utilities::nt::library{}.get_iat_entry("kernel32.dll", "ExitProcess"), exit_hook);
+		utilities::hook::set(utilities::nt::library{}.get_iat_entry("kernel32.dll", "ExitProcess"), exit_hook);
 	}
 
 	void remove_crash_file()
