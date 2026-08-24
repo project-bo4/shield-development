@@ -1434,7 +1434,7 @@ namespace gsc_funcs
 
 	void patch_scrvm_runtime_error()
 	{
-		const auto scrvm_runtimeerror = 0x1427775B0_g;
+		const auto scrvm_runtimeerror = 0x1427758B0_g;
 		void* stub = utilities::hook::assemble([scrvm_runtimeerror](utilities::hook::assembler& a)
 			{
 				a.mov(ebx, 0x20); // set errorcode to 0x20
@@ -1540,22 +1540,22 @@ namespace gsc_funcs
 		void post_unpack() override
 		{
 			// replace nulled function references
-			reinterpret_cast<game::BO4_BuiltinFunctionDef*>(0x144ED5D90_g)->actionFunc = add_debug_command; // csc
-			reinterpret_cast<game::BO4_BuiltinFunctionDef*>(0x1449BAD60_g)->actionFunc = add_debug_command; // gsc
+			reinterpret_cast<game::BO4_BuiltinFunctionDef*>(0x144ED3D90_g)->actionFunc = add_debug_command; // csc
+			reinterpret_cast<game::BO4_BuiltinFunctionDef*>(0x1449B8C20_g)->actionFunc = add_debug_command; // gsc
 
-			scr_get_function_reverse_lookup.create(0x1433AF8A0_g, scr_get_function_reverse_lookup_stub);
-			cscr_get_function_reverse_lookup.create(0x141F132A0_g, cscr_get_function_reverse_lookup_stub);
-			cscr_get_function.create(0x141F13140_g, cscr_get_function_stub);
-			cscr_get_method.create(0x141F13650_g, cscr_get_method_stub);
-			scr_get_function.create(0x1433AF840_g, scr_get_function_stub);
-			scr_get_method.create(0x1433AFC20_g, scr_get_method_stub);
+			scr_get_function_reverse_lookup.create(0x1433AD9D0_g, scr_get_function_reverse_lookup_stub);
+			cscr_get_function_reverse_lookup.create(0x141F12CE0_g, cscr_get_function_reverse_lookup_stub);
+			cscr_get_function.create(0x141F12B80_g, cscr_get_function_stub);
+			cscr_get_method.create(0x141F13090_g, cscr_get_method_stub);
+			scr_get_function.create(0x1433AD970_g, scr_get_function_stub);
+			scr_get_method.create(0x1433ADD50_g, scr_get_method_stub);
 
 			// log gsc errors
-			scrvm_error.create(0x142770330_g, scrvm_error_stub);
-			utilities::hook::jump(0x142890470_g, scrvm_log_compiler_error);
+			scrvm_error.create(0x14276E630_g, scrvm_error_stub);
+			utilities::hook::jump(0x14288E770_g, scrvm_log_compiler_error);
 
 			// better runtime error
-			utilities::hook::jump(0x142748550_g, get_gsc_export_info);
+			utilities::hook::jump(0x142746850_g, get_gsc_export_info);
 			patch_scrvm_runtime_error();
 			
 			scheduler::loop(draw_hud, scheduler::renderer);

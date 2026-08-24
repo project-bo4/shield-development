@@ -503,7 +503,7 @@ namespace gsc_custom
 
 	void patch_linking_sys_error()
 	{
-		auto scr_get_gsc_obj = 0x142748BB0_g;
+		auto scr_get_gsc_obj = 0x142746EB0_g;
 
 		// skip the error and the autoexec
 		// 1C1 = syserr start
@@ -575,11 +575,11 @@ namespace gsc_custom
 			game::gVmOpJumpTable[shield_devblock_opcode] = vm_op_custom_devblock;
 
 			// group gsc link
-			scr_get_gsc_obj_hook.create(0x142748BB0_g, scr_get_gsc_obj_stub);
+			scr_get_gsc_obj_hook.create(0x142746EB0_g, scr_get_gsc_obj_stub);
 
 			if (gsc_funcs::enable_dev_blocks)
 			{
-				gsc_obj_resolve_hook.create(0x142746A30_g, gsc_obj_resolve_stub);
+				gsc_obj_resolve_hook.create(0x142744D30_g, gsc_obj_resolve_stub);
 			}
 
 

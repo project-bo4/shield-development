@@ -47,9 +47,9 @@ namespace spoofcall
 
 		uint64_t get_callstack_return_stub()
 		{
-			const auto placeholder = 0x1403CF1C6_g;
+			const auto placeholder = 0x1403CEF26_g;
 			
-			utilities::hook::set<uint8_t>(placeholder - 2, 0xFF); // fakes a call
+			utilities::hook::set<uint16_t>(placeholder - 2, 0xD0FF); // fakes a call
 			utilities::hook::nop(placeholder, 1);
 			utilities::hook::jump(placeholder + 1, utilities::hook::assemble(callstack_return_stub));
 
@@ -84,6 +84,7 @@ namespace spoofcall
 		if (!spoofer_initialized)
 		{
 			callstack_proxy_addr = utilities::hook::assemble(callstack_stub);
+			spoofer_initialized = true;
 		}
 
 		address_to_call = funcAddr;

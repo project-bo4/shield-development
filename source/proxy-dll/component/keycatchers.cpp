@@ -62,8 +62,8 @@ namespace keycatchers
 	public:
 		void post_unpack() override
 		{
-			cl_key_event_hook.create(0x142839250_g, cl_key_event_stub);
-			cl_char_event_hook.create(0x142836F80_g, cl_char_event_stub);
+			cl_key_event_hook.create(0x142837550_g, cl_key_event_stub);
+			cl_char_event_hook.create(0x142835280_g, cl_char_event_stub);
 		}
 	};
 }

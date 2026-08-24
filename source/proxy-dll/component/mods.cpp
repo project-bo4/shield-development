@@ -1358,10 +1358,10 @@ namespace mods {
 
 			// custom assets loading
 			db_find_xasset_header_hook.create(xassets::DB_FindXAssetHeader.get(), db_find_xasset_header_stub);
-			db_does_xasset_exist_hook.create(0x142EB6C90_g, db_does_xasset_exist_stub);
-			scr_gsc_obj_link_hook.create(0x142748F10_g, scr_gsc_obj_link_stub);
-			hksl_loadfile_hook.create(0x14375D6A0_g, hksl_loadfile_stub);
-			bg_cache_sync_hook.create(0x1405CE0B0_g, bg_cache_sync_stub);
+			db_does_xasset_exist_hook.create(0x142EB4F90_g, db_does_xasset_exist_stub);
+			scr_gsc_obj_link_hook.create(0x142747210_g, scr_gsc_obj_link_stub);
+			hksl_loadfile_hook.create(0x14375B7D0_g, hksl_loadfile_stub);
+			bg_cache_sync_hook.create(0x1405CDE40_g, bg_cache_sync_stub);
 
 			command::add("reload_mods", mods_reload_f, "Reload the shield mods");
 		}
