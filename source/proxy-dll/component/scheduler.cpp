@@ -164,8 +164,8 @@ namespace scheduler
 
 		void post_unpack() override
 		{
-			r_end_frame_hook.create(0x14361E260_g, r_end_frame_stub);	// R_EndFrame
-			main_frame_hook.create(0x14288BAE0_g, main_frame_stub);		// Com_Frame
+			r_end_frame_hook.create(0x14361C390_g, r_end_frame_stub);	// R_EndFrame Updated
+			main_frame_hook.create(0x142889DE0_g, main_frame_stub);		// Com_Frame Updated
 			//g_run_frame_hook.create(0x142D08FC0_g, server_frame_stub);	// G_RunFrame
 		}
 

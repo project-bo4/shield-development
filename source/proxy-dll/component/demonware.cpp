@@ -504,16 +504,16 @@ namespace demonware
 		{
 			server_thread = utilities::thread::create_named_thread("Demonware", server_main);
 
-			utilities::hook::set<uint8_t>(0x144508469_g, 0x0); // CURLOPT_SSL_VERIFYPEER
-			utilities::hook::set<uint8_t>(0x144508455_g, 0xAF); // CURLOPT_SSL_VERIFYHOST
-			utilities::hook::set<uint8_t>(0x144B28D98_g, 0x0); // HTTPS -> HTTP
+			utilities::hook::set<uint8_t>(0x144506619_g, 0x0); // CURLOPT_SSL_VERIFYPEER
+			utilities::hook::set<uint8_t>(0x144506605_g, 0xAF); // CURLOPT_SSL_VERIFYHOST
+			utilities::hook::set<uint8_t>(0x144B26C38_g, 0x0); // HTTPS -> HTTP
 
-			utilities::hook::copy_string(0x144A27C70_g, "http://prod.umbrella.demonware.net");
-			utilities::hook::copy_string(0x144A2BAA0_g, "http://prod.uno.demonware.net/v1.0");
-			utilities::hook::copy_string(0x144A29CB0_g, "http://%s:%d/auth/");
+			utilities::hook::copy_string(0x144A25B20_g, "http://prod.umbrella.demonware.net");
+			utilities::hook::copy_string(0x144A29950_g, "http://prod.uno.demonware.net/v1.0");
+			utilities::hook::copy_string(0x144A27B60_g, "http://%s:%d/auth/");
 			
-			utilities::hook::set(0x142DD0E10_g, 0xC301B0); // Live_Qos_Finished
-			utilities::hook::set(0x1438C2C70_g, 0xC301B0); // Live_Contracts? related to bdUNK125
+			utilities::hook::set(0x142DCF110_g, 0xC301B0); // Live_Qos_Finished
+			utilities::hook::set(0x1438C0DA0_g, 0xC301B0); // Live_Contracts? related to bdUNK125
 		}
 
 		void pre_destroy() override

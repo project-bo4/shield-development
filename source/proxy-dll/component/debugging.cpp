@@ -99,7 +99,7 @@ namespace debugging
 	public:
 		void post_unpack() override
 		{
-			sys_error_hook.create(0x143D36CC0_g, sys_error_stub);
+			sys_error_hook.create(0x143D34E70_g, sys_error_stub);
 			scheduler::loop(draw_debug_info, scheduler::renderer);
 			scheduler::loop(test_key_catcher, scheduler::main);
 		}

@@ -149,18 +149,18 @@ namespace unlockall
 	public:
 		void post_unpack() override
 		{
-			utilities::hook::jump(0x1438AE2F0_g, return_false); // patch LiveStats data source
+			utilities::hook::jump(0x1438AC420_g, return_false); // patch LiveStats data source
 			
-			utilities::hook::jump(0x1437F6ED0_g, liveinventory_getitemquantity); // grant every loot item
+			utilities::hook::jump(0x1437F5000_g, liveinventory_getitemquantity); // grant every loot item
 
-			utilities::hook::jump(0x1406BB410_g, bg_unlockedgetchallengeunlockedforindex);
-			utilities::hook::jump(0x1406B5530_g, bg_unlockablesitemoptionlocked);
-			utilities::hook::jump(0x1406B34D0_g, bg_unlockablesisitemattachmentlocked);
-			utilities::hook::jump(0x1406B3290_g, bg_unlockablesisattachmentslotlocked);
-			utilities::hook::jump(0x1406AC010_g, bg_unlockablesemblemorbackinglockedbychallenge);
-			utilities::hook::jump(0x144184D20_g, bg_emblemisentitlementbackgroundgranted);
-			utilities::hook::jump(0x1406B3AA0_g, bg_unlockablesisitemlocked);
-			utilities::hook::jump(0x1406ae060_g, bg_unlockablesgetcustomclasscount);
+			utilities::hook::jump(0x1406BB1A0_g, bg_unlockedgetchallengeunlockedforindex);
+			utilities::hook::jump(0x1406B52C0_g, bg_unlockablesitemoptionlocked);
+			utilities::hook::jump(0x1406B3260_g, bg_unlockablesisitemattachmentlocked);
+			utilities::hook::jump(0x1406B3020_g, bg_unlockablesisattachmentslotlocked);
+			utilities::hook::jump(0x1406ABDA0_g, bg_unlockablesemblemorbackinglockedbychallenge);
+			utilities::hook::jump(0x144182ED0_g, bg_emblemisentitlementbackgroundgranted);
+			utilities::hook::jump(0x1406B3830_g, bg_unlockablesisitemlocked);
+			utilities::hook::jump(0x1406ADDF0_g, bg_unlockablesgetcustomclasscount);
 		}
 	};
 }

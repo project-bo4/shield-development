@@ -125,44 +125,44 @@ namespace lua {
 		// - 0x141FD3220_g engine_openurl
 		// - 0x141D34190_g debug
 			
-		utilities::hook::jump(0x1437358D0_g, lua_unsafe_function_stub); // base_loadfile
-		utilities::hook::jump(0x143736A50_g, lua_unsafe_function_stub); // base_load
-		utilities::hook::jump(0x14373B640_g, lua_unsafe_function_stub); // string_dump
+		utilities::hook::jump(0x143733A00_g, lua_unsafe_function_stub); // base_loadfile
+		utilities::hook::jump(0x143734B80_g, lua_unsafe_function_stub); // base_load
+		utilities::hook::jump(0x143739770_g, lua_unsafe_function_stub); // string_dump
 		
 
 		// io helpers
-		utilities::hook::jump(0x14373F000_g, lua_unsafe_function_stub); // os_exit
-		utilities::hook::jump(0x14373F020_g, lua_unsafe_function_stub); // os_remove
-		utilities::hook::jump(0x14373F150_g, lua_unsafe_function_stub); // os_rename
-		utilities::hook::jump(0x14373EEC0_g, lua_unsafe_function_stub); // os_tmpname
-		utilities::hook::jump(0x14373EE90_g, lua_unsafe_function_stub); // os_sleep
-		utilities::hook::jump(0x14373ED30_g, lua_unsafe_function_stub); // os_execute
-		utilities::hook::jump(0x14373ED90_g, lua_unsafe_function_stub); // os_getenv
+		utilities::hook::jump(0x14373D130_g, lua_unsafe_function_stub); // os_exit
+		utilities::hook::jump(0x14373D150_g, lua_unsafe_function_stub); // os_remove
+		utilities::hook::jump(0x14373D280_g, lua_unsafe_function_stub); // os_rename
+		utilities::hook::jump(0x14373CFF0_g, lua_unsafe_function_stub); // os_tmpname
+		utilities::hook::jump(0x14373CFC0_g, lua_unsafe_function_stub); // os_sleep
+		utilities::hook::jump(0x14373CE60_g, lua_unsafe_function_stub); // os_execute
+		utilities::hook::jump(0x14373CEC0_g, lua_unsafe_function_stub); // os_getenv
 
-		utilities::hook::jump(0x14373D170_g, lua_unsafe_function_stub); // io_close
-		utilities::hook::jump(0x14373D060_g, lua_unsafe_function_stub); // io_close_file
-		utilities::hook::jump(0x14373D030_g, lua_unsafe_function_stub); // io_flush
-		utilities::hook::jump(0x14375C7B0_g, lua_unsafe_function_stub); // io_output/io_input
-		utilities::hook::jump(0x14373D7B0_g, lua_unsafe_function_stub); // io_lines
-		utilities::hook::jump(0x14373D670_g, lua_unsafe_function_stub); // io_lines
-		utilities::hook::jump(0x14373DD20_g, lua_unsafe_function_stub); // io_open
-		utilities::hook::jump(0x14373D5B0_g, lua_unsafe_function_stub); // io_read
-		utilities::hook::jump(0x14373D200_g, lua_unsafe_function_stub); // io_read_file
-		utilities::hook::jump(0x14373DA90_g, lua_unsafe_function_stub); // io_type
-		utilities::hook::jump(0x14373CFB0_g, lua_unsafe_function_stub); // io_write
-		utilities::hook::jump(0x14373CF70_g, lua_unsafe_function_stub); // io_write_file
-		utilities::hook::jump(0x14373DC60_g, lua_unsafe_function_stub); // io_tmpfile
-		utilities::hook::jump(0x14373E160_g, lua_unsafe_function_stub); // io_popen
-		utilities::hook::jump(0x14373DE40_g, lua_unsafe_function_stub); // io_seek_file
-		utilities::hook::jump(0x14373DF80_g, lua_unsafe_function_stub); // io_setvbuf
-		utilities::hook::jump(0x14373E0A0_g, lua_unsafe_function_stub); // io_tostring
-		utilities::hook::jump(0x143735360_g, lua_unsafe_function_stub); // serialize_persist
-		utilities::hook::jump(0x143735590_g, lua_unsafe_function_stub); // serialize_unpersist
+		utilities::hook::jump(0x14373B2A0_g, lua_unsafe_function_stub); // io_close
+		utilities::hook::jump(0x14373B190_g, lua_unsafe_function_stub); // io_close_file
+		utilities::hook::jump(0x14373B160_g, lua_unsafe_function_stub); // io_flush
+		utilities::hook::jump(0x14375A8E0_g, lua_unsafe_function_stub); // io_output/io_input
+		utilities::hook::jump(0x14373B8E0_g, lua_unsafe_function_stub); // io_lines
+		utilities::hook::jump(0x14373B7A0_g, lua_unsafe_function_stub); // io_lines
+		utilities::hook::jump(0x14373BE50_g, lua_unsafe_function_stub); // io_open
+		utilities::hook::jump(0x14373B6E0_g, lua_unsafe_function_stub); // io_read
+		utilities::hook::jump(0x14373B330_g, lua_unsafe_function_stub); // io_read_file
+		utilities::hook::jump(0x14373BBC0_g, lua_unsafe_function_stub); // io_type
+		utilities::hook::jump(0x14373B0E0_g, lua_unsafe_function_stub); // io_write
+		utilities::hook::jump(0x14373B0A0_g, lua_unsafe_function_stub); // io_write_file
+		utilities::hook::jump(0x14373BD90_g, lua_unsafe_function_stub); // io_tmpfile
+		utilities::hook::jump(0x14373C290_g, lua_unsafe_function_stub); // io_popen
+		utilities::hook::jump(0x14373BF70_g, lua_unsafe_function_stub); // io_seek_file
+		utilities::hook::jump(0x14373C0B0_g, lua_unsafe_function_stub); // io_setvbuf
+		utilities::hook::jump(0x14373C1D0_g, lua_unsafe_function_stub); // io_tostring
+		utilities::hook::jump(0x143733490_g, lua_unsafe_function_stub); // serialize_persist
+		utilities::hook::jump(0x1437336C0_g, lua_unsafe_function_stub); // serialize_unpersist
 
-		utilities::hook::jump(0x14373BC40_g, lua_unsafe_function_stub); // havokscript_compiler_settings
-		utilities::hook::jump(0x14373C670_g, lua_unsafe_function_stub); // havokscript_getgcweights
-		utilities::hook::jump(0x14373C100_g, lua_unsafe_function_stub); // havokscript_setgcweights
-		utilities::hook::jump(0x143734DC0_g, lua_unsafe_function_stub); // package_loadlib
+		utilities::hook::jump(0x143739D70_g, lua_unsafe_function_stub); // havokscript_compiler_settings
+		utilities::hook::jump(0x14373A7A0_g, lua_unsafe_function_stub); // havokscript_getgcweights
+		utilities::hook::jump(0x14373A230_g, lua_unsafe_function_stub); // havokscript_setgcweights
+		utilities::hook::jump(0x143732EF0_g, lua_unsafe_function_stub); // package_loadlib
 
 	}
 
@@ -192,16 +192,16 @@ namespace lua {
 		{
 			if (utilities::json_config::ReadBoolean("lua", "info", false))
 			{
-				utilities::hook::jump(0x143956010_g, lua_engine_print_info);
+				utilities::hook::jump(0x143954280_g, lua_engine_print_info);
 
 			}
 			if (utilities::json_config::ReadBoolean("lua", "error", false))
 			{
-				hksi_lual_error_hook.create(0x143757780_g, hksi_lual_error_stub);
-				lual_error_hook.create(0x14375D410_g, lual_error_stub);
-				utilities::hook::jump(0x14423A1D0_g, lui_panic_stub);
-				utilities::hook::jump(0x143955FA0_g, lua_engine_print_error);
-				utilities::hook::jump(0x143956090_g, lua_engine_print_warning);
+				hksi_lual_error_hook.create(0x1437558B0_g, hksi_lual_error_stub);
+				lual_error_hook.create(0x14375B540_g, lual_error_stub);
+				utilities::hook::jump(0x144238380_g, lui_panic_stub);
+				utilities::hook::jump(0x143954210_g, lua_engine_print_error);
+				utilities::hook::jump(0x143954300_g, lua_engine_print_warning);
 			}
 
 			patch_unsafe_lua_functions();
